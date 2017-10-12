@@ -113,6 +113,7 @@ COMANDO 	: E ';'
 						$$.traducao = $3.traducao + "\t" + varMap[$1.label].label + " = " + $3.label + ";\n";
 					}
 					else {
+						cout << $3.tipo << endl;
 						yyerror("Tipos nao compativeis");
 					}
 				}
@@ -284,21 +285,21 @@ E 			: E '+' E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " && " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_OR E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " || " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_IGUAL E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " == " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 
@@ -306,7 +307,7 @@ E 			: E '+' E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " != " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 
@@ -314,7 +315,7 @@ E 			: E '+' E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " > " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 
@@ -322,25 +323,26 @@ E 			: E '+' E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " < " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_MAIORI E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " >= " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_MENORI E
 			{
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " <= " + $3.label + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| '(' TIPO ')' E
-			{
+			{	
+				
 				$$.label = generateLabel();
 				varDeclar += $2.tipo + " " + $$.label + ";\n\t";
 				$$.tipo = $2.tipo;
@@ -385,7 +387,7 @@ E 			: E '+' E
 				$$.label = generateLabel();
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + aux + ";\n";
-				$$.tipo = "bool";
+				$$.tipo = "unsigned char";
 
 			}
 			| TK_CHAR
@@ -400,7 +402,7 @@ E 			: E '+' E
 				if(varMap.find($1.label) != varMap.end()) {
         			//$$.traducao = "\t" + $$.label + " = " + varMap[$1.label].label + ":\n";
         			$$.tipo = varMap[$1.label].tipo;
-        			$$.label = $1.label;
+        			$$.label = varMap[$1.label].label;
         			//$$ = varMap[$1.label];
 				}
 				else {

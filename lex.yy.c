@@ -375,8 +375,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 26
-#define YY_END_OF_BUFFER 27
+#define YY_NUM_RULES 27
+#define YY_END_OF_BUFFER 28
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -386,12 +386,12 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[62] =
     {   0,
-        0,    0,   27,   25,    2,    1,   25,    8,   25,   25,
-       18,   19,   20,   15,   12,   14,   24,   24,   24,   24,
-       24,   24,   24,   25,    2,   11,    9,    0,    0,    0,
-       20,   17,   13,   16,   24,   24,   24,   24,   24,   24,
-       24,   24,   24,   10,   23,   21,   24,   24,   24,   24,
-        4,   24,   24,    6,    7,   24,   24,    3,   22,    5,
+        0,    0,   28,   26,    2,    1,    9,    8,   26,   26,
+       19,   20,   21,   16,   13,   15,   25,   25,   25,   25,
+       25,   25,   25,   26,    2,   12,   10,    0,    0,    0,
+       21,   18,   14,   17,   25,   25,   25,   25,   25,   25,
+       25,   25,   25,   11,   24,   22,   25,   25,   25,   25,
+        4,   25,   25,    6,    7,   25,   25,    3,   23,    5,
         0
     } ;
 
@@ -835,94 +835,99 @@ YY_RULE_SETUP
 case 9:
 YY_RULE_SETUP
 #line 35 "lexica.l"
-{ return TK_AND;}
+{ return TK_NOT;}
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
 #line 36 "lexica.l"
-{ return TK_OR;}
+{ return TK_AND;}
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
 #line 37 "lexica.l"
-{ return TK_DIFERENTE;}
+{ return TK_OR;}
 	YY_BREAK
 case 12:
 YY_RULE_SETUP
 #line 38 "lexica.l"
-{ return TK_ATRIB;}
+{ return TK_DIFERENTE;}
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
 #line 39 "lexica.l"
-{ return TK_IGUAL;}
+{ return TK_ATRIB;}
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
 #line 40 "lexica.l"
-{ return TK_MAIOR;}
+{ return TK_IGUAL;}
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
 #line 41 "lexica.l"
-{ return TK_MENOR;}
+{ return TK_MAIOR;}
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
 #line 42 "lexica.l"
-{ return TK_MAIORI;}
+{ return TK_MENOR;}
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
 #line 43 "lexica.l"
-{ return TK_MENORI;}
+{ return TK_MAIORI;}
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 45 "lexica.l"
-{ return *yytext; }
+#line 44 "lexica.l"
+{ return TK_MENORI;}
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 47 "lexica.l"
+#line 46 "lexica.l"
 { return *yytext; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 49 "lexica.l"
-{ yylval.label = yytext; return TK_INT; }
+#line 48 "lexica.l"
+{ return *yytext; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
 #line 50 "lexica.l"
-{ yylval.label = yytext; return TK_FLOAT; }
+{ yylval.label = yytext; return TK_INT; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
 #line 51 "lexica.l"
-{ yylval.label = yytext; return TK_BOOL; }
+{ yylval.label = yytext; return TK_FLOAT; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
 #line 52 "lexica.l"
-{ yylval.label = yytext; return TK_CHAR;}
+{ yylval.label = yytext; return TK_BOOL; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
 #line 53 "lexica.l"
-{ yylval.label = yytext; return TK_ID; }
+{ yylval.label = yytext; return TK_CHAR;}
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 55 "lexica.l"
-{ *yytext; }
+#line 54 "lexica.l"
+{ yylval.label = yytext; return TK_ID; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 57 "lexica.l"
+#line 56 "lexica.l"
+{ *yytext; }
+	YY_BREAK
+case 27:
+YY_RULE_SETUP
+#line 58 "lexica.l"
 ECHO;
 	YY_BREAK
-#line 926 "lex.yy.c"
+#line 931 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1923,7 +1928,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 57 "lexica.l"
+#line 58 "lexica.l"
 
 
 

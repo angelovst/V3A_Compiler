@@ -60,13 +60,14 @@ extern int yydebug;
     TK_ATRIB = 270,
     TK_OR = 271,
     TK_AND = 272,
-    TK_IGUAL = 273,
-    TK_DIFERENTE = 274,
-    TK_MAIOR = 275,
-    TK_MENOR = 276,
-    TK_MAIORI = 277,
-    TK_MENORI = 278,
-    TK_MOD = 279
+    TK_NOT = 273,
+    TK_IGUAL = 274,
+    TK_DIFERENTE = 275,
+    TK_MAIOR = 276,
+    TK_MENOR = 277,
+    TK_MAIORI = 278,
+    TK_MENORI = 279,
+    TK_MOD = 280
   };
 #endif
 /* Tokens.  */
@@ -85,13 +86,14 @@ extern int yydebug;
 #define TK_ATRIB 270
 #define TK_OR 271
 #define TK_AND 272
-#define TK_IGUAL 273
-#define TK_DIFERENTE 274
-#define TK_MAIOR 275
-#define TK_MENOR 276
-#define TK_MAIORI 277
-#define TK_MENORI 278
-#define TK_MOD 279
+#define TK_NOT 273
+#define TK_IGUAL 274
+#define TK_DIFERENTE 275
+#define TK_MAIOR 276
+#define TK_MENOR 277
+#define TK_MAIORI 278
+#define TK_MENORI 279
+#define TK_MOD 280
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
