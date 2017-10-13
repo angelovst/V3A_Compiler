@@ -1,7 +1,6 @@
 int main()
 {
-	oi = true;
-	a = 1 < 2;
-
+	int anna;
+	anna = true;
 
 }

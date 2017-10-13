@@ -113,7 +113,6 @@ COMANDO 	: E ';'
 						$$.traducao = $3.traducao + "\t" + varMap[$1.label].label + " = " + $3.label + ";\n";
 					}
 					else {
-						cout << $3.tipo << endl;
 						yyerror("Tipos nao compativeis");
 					}
 				}
