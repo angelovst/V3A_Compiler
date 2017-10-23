@@ -22,6 +22,8 @@ ID {LETRA}({LETRA}|{INT})*
 
 "main"		{return TK_MAIN;}
 
+"if"		{return TK_IF;}
+
 "int"		{return TK_TIPO_INT;}
 
 "float"		{return TK_TIPO_FLOAT;}
@@ -29,6 +31,7 @@ ID {LETRA}({LETRA}|{INT})*
 "bool"		{return TK_TIPO_BOOL;}
 
 "char"		{return TK_TIPO_CHAR;}
+
 
 "%"			{return TK_MOD;}
 

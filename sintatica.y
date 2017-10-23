@@ -3,7 +3,7 @@
 #include <string>
 #include <sstream>
 #include <map>
-
+#include <list>
 #define YYSTYPE atributos
 
 using namespace std;
@@ -24,15 +24,20 @@ struct atributos
 
 int yylex(void);
 void yyerror(string);
+
 //Mapa de variaveis
 std::map<string, atributos> varMap;
+
+//Pilha de variaveis
+std::list<map<string, atributos>> listVar;
+
 //String para declaracao de var
 string varDeclar;
 
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR
+%token TK_MAIN TK_IF TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR
 %token TK_FIM TK_ERROR
 
 %start S
@@ -281,7 +286,7 @@ E 			: E '+' E
 				
 			}
 			| E TK_AND E
-			{
+			{	
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " && " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
@@ -440,6 +445,7 @@ int yyparse();
 
 int main( int argc, char* argv[] )
 {
+	listVar.push_back(varMap);
 	yyparse();
 
 	return 0;
