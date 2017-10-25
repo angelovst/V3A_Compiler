@@ -29,10 +29,71 @@ void yyerror(string);
 std::map<string, atributos> varMap;
 
 //Pilha de variaveis
-std::list<map<string, atributos>> listVar;
+std::list<map<string, atributos>> listMap;
 
 //String para declaracao de var
 string varDeclar;
+
+bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
+
+
+	cout << "Entrou: "<< tipo << " "<< label << endl;
+
+	/*std::map<string, atributos> *mapLocal = &listMap.back();
+
+	if(mapLocal->find(label) != mapLocal->end()) return false;
+
+	atrib.label = generateLabel();
+	atrib.tipo = tipo;
+	(*mapLocal)[label] = atrib;
+	*/
+
+	std::map<string, atributos> mapLocal = listMap.back();
+
+	if(mapLocal.find(label) != mapLocal.end()) return false;
+
+	atrib.label = generateLabel();
+	atrib.tipo = tipo;
+	mapLocal[label] = atrib;
+
+
+	cout << "Saiu com a label:  "<< atrib.tipo << " "<< atrib.label << endl;
+	mapLocal[label].tipo = "float";
+
+	return true;
+}
+
+bool atribuicaoLocal(string &tipo, string &label, string &valor, string &valorTipo, struct atributos &atrib){	//Em producao
+	if(!declaracaoLocal(tipo, label, atrib)) return false;
+
+	return true;
+}
+
+/*
+| TIPO TK_ID TK_ATRIB E ';'
+			{
+				if(varMap.find($2.label) != varMap.end()) {
+        			yyerror("Variavel usada para atribuicao ja declarada");	
+				}
+				else if( $1.tipo == $4.tipo ){
+					if (varMap.find($4.label) != varMap.end())	{
+						$$.label = generateLabel();
+						$$.tipo = $1.tipo;
+						$$.traducao = "\t" + $$.label + " = " + varMap[$4.label].label + ";\n";
+						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+						varMap[$2.label] = $$;
+					}
+					else {
+					$$.label = $4.label;
+					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
+					$$.tipo = $1.tipo;
+					varMap[$2.label] = $$;
+					}
+				}
+				else {
+					yyerror("Atribuicao de tipos nao compativeis");
+				}
+*/
 
 %}
 
@@ -44,7 +105,7 @@ string varDeclar;
 
 %right TK_ATRIB
 %left TK_OR TK_AND TK_NOT
-%nonassoc  TK_IGUAL TK_DIFERENTE
+%nonassoc TK_IGUAL TK_DIFERENTE
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
 %left '+' '-'
 %left '*' '/'
@@ -75,15 +136,18 @@ COMANDO 	: E ';'
 
 			| TIPO TK_ID ';'
 			{
-				if(varMap.find($2.label) != varMap.end()) {
-        			yyerror("Variavel ja declarada");	
-				}
-				else{
-					$$.label = generateLabel();
-					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
-					varMap[$2.label] = $$;
-				}
+
+
+
+				if(!declaracaoLocal($1.tipo, $2.label, $$)) yyerror("Variavel ja declarada");
+				else varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+
+				std::map<string, atributos> *mapLocal = &listMap.back();
+
+			
+
+				cout << "Saiu com a label oi "<< (*mapLocal)[$2.label].tipo << " "<< (*mapLocal)[$2.label].label << endl;
+				cout << "Saiu com a label  "<< varMap[$2.label].tipo << " "<< varMap[$2.label].label << endl;
 
 			}
 
@@ -445,7 +509,8 @@ int yyparse();
 
 int main( int argc, char* argv[] )
 {
-	listVar.push_back(varMap);
+	listMap.push_front(varMap);
+
 	yyparse();
 
 	return 0;
