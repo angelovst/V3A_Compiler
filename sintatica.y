@@ -5,21 +5,38 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#define YYSTYPE atributos	
+#define YYSTYPE atributos
+
+#define TIPO_INT "int"
+#define TIPO_FLOAT "float"
+#define TIPO_BOOL "unsigend char"
+#define TIPO_CHAR "char"
+#define TIPO_LIST "list"
+#define TIPO_INFIX_OPERATOR "operator inf"
 
 using namespace std;
 
 string generateLabel(){
 
-	static unsigned int i = 1;
+	static unsigned int i = 0;
 	return "TMP" + to_string(i++);
 }
+
+typedef struct {
+	string traducao;
+	size_t size;
+} Tipo;
+Tipo tipo_int = { TIPO_INT, sizeof(int) };
+Tipo tipo_float = { TIPO_FLOAT, sizeof(float) };
+Tipo tipo_bool = { TIPO_BOOL, sizeof(unsigned char) };
+Tipo tipo_char = { TIPO_CHAR, sizeof(char) };
+Tipo tipo_list = { TIPO_LIST, sizeof(size_t)+2*sizeof(void*) };
 
 typedef struct atributos
 {
 	string label;
 	string traducao;
-	string tipo;
+	Tipo tipo;
 
 }atributos;
 
@@ -57,7 +74,7 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR
-%token TK_MAIN TK_IF TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR
+%token TK_MAIN TK_IF TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST
 %token TK_FIM TK_ERROR
 
 %start S
@@ -66,9 +83,8 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 %left TK_OR TK_AND TK_NOT
 %nonassoc TK_IGUAL TK_DIFERENTE
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
-%left '+' '-'
-%left '*' '/'
-%left TK_MOD
+%left TK_PLUS TK_MINUS
+%left TK_MULT TK_DIV TK_MOD
 
 %%
 
@@ -121,7 +137,7 @@ COMANDO 	: E ';'
 				else {
 					$$.label = generateLabel();
 					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+					varDeclar += $1.traducao + $2.traducao + $$.tipo.traducao + " " + $$.label + ";\n\t";
 					(*mapLocal)[$2.label] = $$;
 				}
 					
@@ -134,7 +150,7 @@ COMANDO 	: E ';'
 				if(mapLocal->find($2.label) != mapLocal->end()) {
         			yyerror("Variavel usada para atribuicao ja declarada");	
 				}
-				else if( $1.tipo == $4.tipo ){
+				else if( $1.tipo.traducao == $4.tipo.traducao ){
 					if (mapLocal->find($4.label) != mapLocal->end())	{
 						$$.label = generateLabel();
 						$$.tipo = $1.tipo;
@@ -158,7 +174,7 @@ COMANDO 	: E ';'
 				std::map<string, atributos> *mapLocal = &varMap.back();
 				
 				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo == $3.tipo) {
+					if((*mapLocal)[$1.label].tipo.traducao == $3.tipo.traducao) {
 						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
 					}
 					else {
@@ -176,215 +192,32 @@ COMANDO 	: E ';'
 
 			;
 
-E 			: E '+' E
-			{
-
+E 			: E OP_INFIX E {
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao;
-				string aux;
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " + " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-
+				string var1 = $1.label, var2 = $3.label;
+				int needsCast = compatibleTypes(&$1.tipo, &$2.tipo);
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " + " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
 				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
-					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " + " + $3.label + ";\n";
+				//cast
+				if (needsCast) {
+					if (needsCast & CAST_1ST) {
+						//needs to cast $1 to $3 
+						var1 = generateLabel();
+						varDeclar += $3.tipo.traducao + ' ' + var1 + "\n\t";
+						$$.traducao = $$.traducao + "\t" + var1 + " = " + '(' + $3.tipo.traducao + ')' + $1.label + ";\n";
+					} else if (needsCast & CAST_2ND) {
+						//needs to cast $3 to $1
+						var2 = generateLabel();
+						varDeclar += $1.tipo.traducao + ' ' + var2 + "\n\t";
+						$$.traducao = $$.traducao + "\t" + var2 + " = " + '(' + $1.tipo.traducao + ')' + $3.label + ";\n";
+					} else {
+						yyerror("Operacao infixa " + $2.traducao + " invalida para tipos " + $1.tipo.traducao + " e " + $2.tipo.traducao);
+					}	
 				}
-				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
-				}
-
-
 				
-			}
-			| E '*' E
-			{
-
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao;
-				string aux;
-
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " * " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-
+				$$.traducao += $$.label + " = " + var1 + $2.traducao + var2 + ";\n";
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " * " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
-					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " * " + $3.label + ";\n";
-				}
-				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
-				}
-
-
-				
-			}
-			| E '/' E
-			{
-
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao;
-				string aux;
-
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " / " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-
-				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " / " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
-					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " / " + $3.label + ";\n";
-				}
-				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
-				}
-
-
-				
-			}
-			| E '-' E
-			{
-
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao;
-				string aux;
-
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " - " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-
-				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
-					varDeclar += "float " + $$.label + ";\n\t";
-					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " - " + $$.label + ";\n";
-					$$.label = aux;
-					$$.tipo = "float";
-				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
-					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " - " + $3.label + ";\n";
-				}
-				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
-				}
-
-
-				
-			}
-			| E TK_AND E
-			{	
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " && " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-			| E TK_OR E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " || " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-			| E TK_IGUAL E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " == " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-
-			| E TK_DIFERENTE E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " != " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-
-			| E TK_MAIOR E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " > " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-
-			| E TK_MENOR E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " < " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-			| E TK_MAIORI E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " >= " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-			}
-			| E TK_MENORI E
-			{
-				$$.label = generateLabel();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " <= " + $3.label + ";\n";
-				$$.tipo = "unsigned char";
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| '(' TIPO ')' E
 			{	
@@ -410,14 +243,14 @@ E 			: E '+' E
 				$$.label = generateLabel();
 				varDeclar += "int " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
-				$$.tipo = "int";
+				$$.tipo = TIPO_INT;
 			}
 			| TK_FLOAT
 			{
 				$$.label = generateLabel();
 				varDeclar += "float " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
-				$$.tipo = "float";
+				$$.tipo = TIPO_FLOAT;
 			}
 			| TK_BOOL
 			{
@@ -433,7 +266,7 @@ E 			: E '+' E
 				$$.label = generateLabel();
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + aux + ";\n";
-				$$.tipo = "unsigned char";
+				$$.tipo = TIPO_BOOL;
 
 			}
 			| TK_CHAR
@@ -441,7 +274,7 @@ E 			: E '+' E
 				$$.label = generateLabel();
 				varDeclar += "char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
-				$$.tipo = "char";
+				$$.tipo = TIPO_CHAR;
 			}
 			| TK_ID
 			{
@@ -462,24 +295,81 @@ E 			: E '+' E
 			
 			
 			;
+			
+OP_INFIX	: TK_PLUS
+			{
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MINUS {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MULT {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_DIV {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MOD {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MINUS  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MULT  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_DIV  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MOD  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_AND  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_OR  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_DIFERENTE  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_IGUAL  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MAIOR  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MENOR  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MAIORI  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			| TK_MENORI  {
+				$$.tipo = TK_INFIX_OPERATOR;
+			}
+			;
 
 TIPO 		: TK_TIPO_INT
 			{
-				$$.tipo = "int";
+				$$.tipo = TIPO_INT;
 			}
 			| TK_TIPO_FLOAT
 			{
-				$$.tipo = "float";
+				$$.tipo = TIPO_FLOAT;
 			}
 			| TK_TIPO_BOOL
 			{
-				$$.tipo = "unsigned char";
+				$$.tipo = TIPO_BOOL;
 			}
 			| TK_TIPO_CHAR
 			{
-				$$.tipo = "char";
+				$$.tipo = TIPO_CHAR;
 			}
-
+			| TK_TIPO_LIST
+			{
+				$$.tipo = TIPO_LIST;
+			}	
 			;
 
 %%

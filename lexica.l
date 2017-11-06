@@ -32,7 +32,10 @@ ID {LETRA}({LETRA}|{INT})*
 
 "char"		{return TK_TIPO_CHAR;}
 
-
+"+"			{return TK_PLUS;}
+"-"			{return TK_MINUS;}
+"*"			{return TK_MULT;}
+"/"			{return TK_DIV;}
 "%"			{return TK_MOD;}
 
 "!"			{ return TK_NOT;}
