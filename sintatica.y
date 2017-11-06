@@ -9,10 +9,16 @@
 
 using namespace std;
 
-string generateLabel(){
+string generateVar(){
 
 	static unsigned int i = 1;
 	return "TMP" + to_string(i++);
+}
+
+string generateLabel(){
+
+	static unsigned int i = 1;
+	return "fimIf" + to_string(i++);
 }
 
 typedef struct atributos
@@ -24,6 +30,10 @@ typedef struct atributos
 }atributos;
 
 //DECLARACOES DE FUNCOES
+
+void empContexto();
+
+void desempContexto();
 
 atributos* findVarOnTop(string label);
 
@@ -46,7 +56,7 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 
 	if(mapLocal->find(label) != mapLocal->end()) return false;
 
-	atrib.label = generateLabel();
+	atrib.label = generateVar();
 	atrib.tipo = tipo;
 	(*mapLocal)[label] = atrib;
 
@@ -56,8 +66,8 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR
-%token TK_MAIN TK_IF TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS
 %token TK_FIM TK_ERROR
 
 %start S
@@ -74,7 +84,8 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 
 S 			: TK_MAIN '(' ')' MAIN
 			{
-				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(void)\n{\n" << "\t" + varDeclar + "\n" << $4.traducao << "\treturn 0;\n}" << endl; 
+				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(void)\n{\n" << "\t" + varDeclar + "\n" << $4.traducao << "\treturn 0;\n}" << endl;
+
 			}
 			;
 
@@ -83,7 +94,7 @@ MAIN		: '{' COMANDOS '}'
 				$$.traducao = $2.traducao;
 			}
 			;
-/*
+
 ESCOPO_INICIO: {
 				empContexto();
 				
@@ -101,12 +112,12 @@ ESCOPO_FIM:	{
 BLOCO		: ESCOPO_INICIO '{' COMANDOS '}' ESCOPO_FIM {
 				$$.traducao = $3.traducao;
 			};
-*/
+
 COMANDOS	: COMANDO COMANDOS
 			{
 				$$.traducao = $1.traducao + $2.traducao;
 			}
-			|
+			| {$$.traducao = "";}
 			;
 
 COMANDO 	: E ';'
@@ -119,7 +130,7 @@ COMANDO 	: E ';'
 					yyerror("Variavel ja declarada localmente");
 				}
 				else {
-					$$.label = generateLabel();
+					$$.label = generateVar();
 					$$.tipo = $1.tipo;
 					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
 					(*mapLocal)[$2.label] = $$;
@@ -136,7 +147,7 @@ COMANDO 	: E ';'
 				}
 				else if( $1.tipo == $4.tipo ){
 					if (mapLocal->find($4.label) != mapLocal->end())	{
-						$$.label = generateLabel();
+						$$.label = generateVar();
 						$$.tipo = $1.tipo;
 						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
 						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
@@ -173,19 +184,20 @@ COMANDO 	: E ';'
 
 				}
 			}
+			| CONTROLE
 
 			;
 
 E 			: E '+' E
 			{
 
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
 				if($1.tipo == "int" && $3.tipo == "float"){
 
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " + " + $$.label + ";\n";
@@ -195,7 +207,7 @@ E 			: E '+' E
 				
 				}else if($1.tipo == "float" && $3.tipo == "int"){
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " + " + $$.label + ";\n";
@@ -216,14 +228,14 @@ E 			: E '+' E
 			| E '*' E
 			{
 
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
 
 				if($1.tipo == "int" && $3.tipo == "float"){
 
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " * " + $$.label + ";\n";
@@ -233,7 +245,7 @@ E 			: E '+' E
 				
 				}else if($1.tipo == "float" && $3.tipo == "int"){
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " * " + $$.label + ";\n";
@@ -254,14 +266,14 @@ E 			: E '+' E
 			| E '/' E
 			{
 
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
 
 				if($1.tipo == "int" && $3.tipo == "float"){
 
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " / " + $$.label + ";\n";
@@ -271,7 +283,7 @@ E 			: E '+' E
 				
 				}else if($1.tipo == "float" && $3.tipo == "int"){
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " / " + $$.label + ";\n";
@@ -292,14 +304,14 @@ E 			: E '+' E
 			| E '-' E
 			{
 
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
 
 				if($1.tipo == "int" && $3.tipo == "float"){
 
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " - " + $$.label + ";\n";
@@ -309,7 +321,7 @@ E 			: E '+' E
 				
 				}else if($1.tipo == "float" && $3.tipo == "int"){
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
-					aux = generateLabel();
+					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
 					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " - " + $$.label + ";\n";
@@ -329,21 +341,21 @@ E 			: E '+' E
 			}
 			| E TK_AND E
 			{	
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " && " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_OR E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " || " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_IGUAL E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " == " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
@@ -351,7 +363,7 @@ E 			: E '+' E
 
 			| E TK_DIFERENTE E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " != " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
@@ -359,7 +371,7 @@ E 			: E '+' E
 
 			| E TK_MAIOR E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " > " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
@@ -367,21 +379,21 @@ E 			: E '+' E
 
 			| E TK_MENOR E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " < " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_MAIORI E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " >= " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
 			| E TK_MENORI E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " <= " + $3.label + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
@@ -389,7 +401,7 @@ E 			: E '+' E
 			| '(' TIPO ')' E
 			{	
 				
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				varDeclar += $2.tipo + " " + $$.label + ";\n\t";
 				$$.tipo = $2.tipo;
 				$$.traducao = $4.traducao + "\t" + $$.label + " =" + '(' + $2.tipo + ')' + $4.label + ";\n";
@@ -397,24 +409,24 @@ E 			: E '+' E
 
 			| '(' E ')'
 			{
-				$$.label = $2.label; //generateLabel();
+				$$.label = $2.label; //generateVar();
 				$$.traducao = $2.traducao;// + "\t" + $$.label + " = " + $2.label + ";\n";
 			}
 			| '-' E
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
 			}
 			| TK_INT
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				varDeclar += "int " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 				$$.tipo = "int";
 			}
 			| TK_FLOAT
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				varDeclar += "float " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 				$$.tipo = "float";
@@ -430,7 +442,7 @@ E 			: E '+' E
 					aux = "0";
 				}
 
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + aux + ";\n";
 				$$.tipo = "unsigned char";
@@ -438,7 +450,7 @@ E 			: E '+' E
 			}
 			| TK_CHAR
 			{
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				varDeclar += "char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
 				$$.tipo = "char";
@@ -455,12 +467,30 @@ E 			: E '+' E
         			$$.label = varMap[$1.label].label;
 				}*/
 				else {
-				$$.label = generateLabel();
+				$$.label = generateVar();
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
 				}
 			}
 			
 			
+			;
+CONTROLE	: TK_IF E TK_DOTS BLOCO
+			{
+				cout << "tipo" << $2.tipo << endl;
+				if($2.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
+
+				string var = generateVar();
+				string fim = generateLabel();
+
+				varDeclar += "int " + var + ";\n\t";
+					
+					$$.traducao = $2.traducao + 
+						"\t" + var + " = !" + $2.label + ";\n" +
+						"\tif (" + var + ") goto " + fim + ";\n" +
+						$4.traducao +
+						"\t" + fim + ":\n";
+			}
+
 			;
 
 TIPO 		: TK_TIPO_INT

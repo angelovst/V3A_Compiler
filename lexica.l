@@ -45,6 +45,7 @@ ID {LETRA}({LETRA}|{INT})*
 "<"			{ return TK_MENOR;}
 ">="		{ return TK_MAIORI;}
 "<="		{ return TK_MENORI;}
+":"			{ return TK_DOTS;}
 
 [(){}[\];,]	{ return *yytext; }
 
