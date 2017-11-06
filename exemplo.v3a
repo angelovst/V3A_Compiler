@@ -1,4 +1,9 @@
-int main()
+main()
 {
-	float a;
+	a = 4;
+
+	a = 86;
+
+
+
 }	

@@ -3,36 +3,56 @@
 #include <string>
 #include <sstream>
 #include <map>
-#include <list>
-#define YYSTYPE atributos
+#include <vector>
+#include <algorithm>
+#define YYSTYPE atributos	
 
 using namespace std;
 
 string generateLabel(){
+
 	static unsigned int i = 1;
 	return "TMP" + to_string(i++);
-
 }
 
-struct atributos
+typedef struct atributos
 {
 	string label;
 	string traducao;
 	string tipo;
-};
 
+}atributos;
+
+//DECLARACOES DE FUNCOES
+
+atributos* findVarOnTop(string label);
+
+atributos* findVar(string label);
+
+string findTmpName(string label);
 
 int yylex(void);
 void yyerror(string);
 
-//Mapa de variaveis
-std::map<string, atributos> varMap;
-
 //Pilha de variaveis
-std::list<map<string, atributos>> listVar;
+std::vector<map<string, atributos>> varMap;
 
 //String para declaracao de var
 string varDeclar;
+
+bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
+
+	std::map<string, atributos> *mapLocal = &varMap.back();
+
+	if(mapLocal->find(label) != mapLocal->end()) return false;
+
+	atrib.label = generateLabel();
+	atrib.tipo = tipo;
+	(*mapLocal)[label] = atrib;
+
+	cout << atrib.label << endl;
+	return true;
+}
 
 %}
 
@@ -44,7 +64,7 @@ string varDeclar;
 
 %right TK_ATRIB
 %left TK_OR TK_AND TK_NOT
-%nonassoc  TK_IGUAL TK_DIFERENTE
+%nonassoc TK_IGUAL TK_DIFERENTE
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
 %left '+' '-'
 %left '*' '/'
@@ -52,18 +72,36 @@ string varDeclar;
 
 %%
 
-S 			: TK_TIPO_INT TK_MAIN '(' ')' BLOCO
+S 			: TK_MAIN '(' ')' MAIN
 			{
-				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(void)\n{\n" << "\t" + varDeclar + "\n" << $5.traducao << "\treturn 0;\n}" << endl; 
+				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(void)\n{\n" << "\t" + varDeclar + "\n" << $4.traducao << "\treturn 0;\n}" << endl; 
 			}
 			;
 
-BLOCO		: '{' COMANDOS '}'
+MAIN		: '{' COMANDOS '}'
 			{
 				$$.traducao = $2.traducao;
 			}
 			;
+/*
+ESCOPO_INICIO: {
+				empContexto();
+				
+				$$.traducao = "";
+				$$.label = "";
+			};
+			
+ESCOPO_FIM:	{
+				desempContexto();
+				
+				$$.traducao = "";
+				$$.label = "";
+			};
 
+BLOCO		: ESCOPO_INICIO '{' COMANDOS '}' ESCOPO_FIM {
+				$$.traducao = $3.traducao;
+			};
+*/
 COMANDOS	: COMANDO COMANDOS
 			{
 				$$.traducao = $1.traducao + $2.traducao;
@@ -75,36 +113,40 @@ COMANDO 	: E ';'
 
 			| TIPO TK_ID ';'
 			{
-				if(varMap.find($2.label) != varMap.end()) {
-        			yyerror("Variavel ja declarada");	
+				std::map<string, atributos> *mapLocal = &varMap.back();
+
+				if(mapLocal->find($2.label) != mapLocal->end()) {
+					yyerror("Variavel ja declarada localmente");
 				}
-				else{
+				else {
 					$$.label = generateLabel();
 					$$.tipo = $1.tipo;
 					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
-					varMap[$2.label] = $$;
+					(*mapLocal)[$2.label] = $$;
 				}
+					
 
 			}
 
 			| TIPO TK_ID TK_ATRIB E ';'
-			{
-				if(varMap.find($2.label) != varMap.end()) {
+			{	
+				std::map<string, atributos> *mapLocal = &varMap.back();
+				if(mapLocal->find($2.label) != mapLocal->end()) {
         			yyerror("Variavel usada para atribuicao ja declarada");	
 				}
 				else if( $1.tipo == $4.tipo ){
-					if (varMap.find($4.label) != varMap.end())	{
+					if (mapLocal->find($4.label) != mapLocal->end())	{
 						$$.label = generateLabel();
 						$$.tipo = $1.tipo;
-						$$.traducao = "\t" + $$.label + " = " + varMap[$4.label].label + ";\n";
+						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
 						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
-						varMap[$2.label] = $$;
+						(*mapLocal)[$2.label] = $$;
 					}
 					else {
 					$$.label = $4.label;
 					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
 					$$.tipo = $1.tipo;
-					varMap[$2.label] = $$;
+					(*mapLocal)[$2.label] = $$;
 					}
 				}
 				else {
@@ -113,9 +155,11 @@ COMANDO 	: E ';'
 			}
 			| TK_ID TK_ATRIB E ';'
 			{
-				if(varMap.find($1.label) != varMap.end()) {
-					if(varMap[$1.label].tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + varMap[$1.label].label + " = " + $3.label + ";\n";
+				std::map<string, atributos> *mapLocal = &varMap.back();
+				
+				if(mapLocal->find($1.label) != mapLocal->end()) {
+					if((*mapLocal)[$1.label].tipo == $3.tipo) {
+						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
 					}
 					else {
 						yyerror("Tipos nao compativeis");
@@ -125,10 +169,9 @@ COMANDO 	: E ';'
 					$$.label = $3.label;
 					$$.tipo = $3.tipo;
 					$$.traducao = $3.traducao;
-					varMap[$1.label] = $$;
+					(*mapLocal)[$1.label] = $$;
 
 				}
-
 			}
 
 			;
@@ -139,7 +182,6 @@ E 			: E '+' E
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
-
 				if($1.tipo == "int" && $3.tipo == "float"){
 
 					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
@@ -403,12 +445,15 @@ E 			: E '+' E
 			}
 			| TK_ID
 			{
-				if(varMap.find($1.label) != varMap.end()) {
-        			//$$.traducao = "\t" + $$.label + " = " + varMap[$1.label].label + ":\n";
+				atributos *id = findVar($1.label);
+				if(id != nullptr) {
+					$$.tipo = id->tipo;
+					$$.label = $1.label;
+				}
+				/*if(varMap.find($1.label) != varMap.end()) {
         			$$.tipo = varMap[$1.label].tipo;
         			$$.label = varMap[$1.label].label;
-        			//$$ = varMap[$1.label];
-				}
+				}*/
 				else {
 				$$.label = generateLabel();
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
@@ -445,7 +490,9 @@ int yyparse();
 
 int main( int argc, char* argv[] )
 {
-	listVar.push_back(varMap);
+	map<string, atributos> mapaGlobal;
+	varMap.push_back(mapaGlobal);
+
 	yyparse();
 
 	return 0;
@@ -455,4 +502,40 @@ void yyerror( string MSG )
 {
 	cout << MSG << endl;
 	exit (0);
-}				
+}		
+
+//FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
+void empContexto() {
+	map<string, atributos> novoMapa;
+	varMap.push_back(novoMapa);
+}
+
+void desempContexto() {
+	return varMap.pop_back();
+}
+//FUNCOES DE PROCURA DE VARIAVEL
+
+atributos* findVarOnTop(string label) {
+	if (varMap[varMap.size() - 1].count(label)) {
+		return &varMap[varMap.size() - 1][label];
+	}
+	
+	return nullptr;
+}
+
+atributos* findVar(string label) {
+	for (int i = varMap.size() - 1; i >= 0; i--) {
+		if (varMap[i].count(label)) {
+			return &varMap[i][label];
+		}
+	}	
+	return nullptr;
+}
+string findTmpName(string label) {
+	for (int i = varMap.size() - 1; i >= 0; i--) {
+		if (varMap[i].count(label)) {
+			return varMap[i][label].label;
+		}
+	}	
+	return "null";
+}
