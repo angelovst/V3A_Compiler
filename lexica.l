@@ -24,6 +24,8 @@ ID {LETRA}({LETRA}|{INT})*
 
 "if"		{return TK_IF;}
 
+"else"		{return TK_ELSE;}
+
 "int"		{return TK_TIPO_INT;}
 
 "float"		{return TK_TIPO_FLOAT;}

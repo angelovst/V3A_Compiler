@@ -1,8 +1,7 @@
 main()
 {
-	int a;
-	if true : { int a; a = 5; }
-	a = 5;
-
-
+	if true : {}
+	else if true : {}
+	else if true : { a = 5; }
+	else : {}
 }	

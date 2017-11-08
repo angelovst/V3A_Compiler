@@ -66,7 +66,7 @@ bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF TK_ELSE
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS
 %token TK_FIM TK_ERROR
 
@@ -122,68 +122,8 @@ COMANDOS	: COMANDO COMANDOS
 
 COMANDO 	: E ';'
 
-			| TIPO TK_ID ';'
-			{
-				std::map<string, atributos> *mapLocal = &varMap.back();
-
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-					yyerror("Variavel ja declarada localmente");
-				}
-				else {
-					$$.label = generateVar();
-					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
-					(*mapLocal)[$2.label] = $$;
-				}
-					
-
-			}
-
-			| TIPO TK_ID TK_ATRIB E ';'
-			{	
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-        			yyerror("Variavel usada para atribuicao ja declarada");	
-				}
-				else if( $1.tipo == $4.tipo ){
-					if (mapLocal->find($4.label) != mapLocal->end())	{
-						$$.label = generateVar();
-						$$.tipo = $1.tipo;
-						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
-						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
-						(*mapLocal)[$2.label] = $$;
-					}
-					else {
-					$$.label = $4.label;
-					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
-					$$.tipo = $1.tipo;
-					(*mapLocal)[$2.label] = $$;
-					}
-				}
-				else {
-					yyerror("Atribuicao de tipos nao compativeis");
-				}
-			}
-			| TK_ID TK_ATRIB E ';'
-			{
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				
-				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
-					}
-					else {
-						yyerror("Tipos nao compativeis");
-					}
-				}
-				else {
-					$$.label = $3.label;
-					$$.tipo = $3.tipo;
-					$$.traducao = $3.traducao;
-					(*mapLocal)[$1.label] = $$;
-
-				}
-			}
+			| ATRIBUICAO
+			
 			| CONTROLE
 
 			;
@@ -476,7 +416,6 @@ E 			: E '+' E
 			;
 CONTROLE	: TK_IF E TK_DOTS BLOCO
 			{
-				cout << "tipo" << $2.tipo << endl;
 				if($2.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
 
 				string var = generateVar();
@@ -484,14 +423,147 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 
 				varDeclar += "int " + var + ";\n\t";
 					
-					$$.traducao = $2.traducao + 
+					$$.traducao = "\n" + $2.traducao + 
 						"\t" + var + " = !" + $2.label + ";\n" +
-						"\tif (" + var + ") goto " + fim + ";\n" +
+						"\tif (" + var + ") goto " + fim + ";\n\n" +
 						$4.traducao +
-						"\t" + fim + ":\n";
+						"\n\t" + fim + ":\n\n";
+			}
+			| TK_IF E TK_DOTS BLOCO CONTROLE_ALT
+			{
+
+				if($2.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
+
+				string var = generateVar();
+				string fim = generateLabel();
+
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.traducao = "\n" + $2.traducao + 
+						"\t" + var + " = !" + $2.label + ";\n" +
+						"\tif (" + var + ") goto " + fim + ";\n\n" +
+						$4.traducao +
+						"\tgoto " + $5.label + ";\n\n" +
+						"\t" + fim + ":" + $5.traducao;
+				
 			}
 
+			//LOOP VAI ENTRAR AQUI TB COM |
+
 			;
+
+CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
+			{
+				if($3.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
+
+				string var = generateVar();
+				string fim = generateLabel();
+
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.label = fim;
+				$$.traducao = "\n" + $3.traducao + 
+						"\t" + var + " = !" + $3.label + ";\n\n" +
+						"\tif (" + var + ") goto " + fim + ";\n" +
+						$5.traducao +
+						"\n\t" + fim + ":\n";
+
+			}
+
+			| TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT
+			{
+				if($3.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
+
+				string var = generateVar();
+				string fim = generateLabel();
+
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.label = $6.label;
+				$$.traducao = "\n" + $3.traducao + 
+						"\t" + var + " = !" + $3.label + ";\n\n" +
+						"\tif (" + var + ") goto " + fim + ";\n" +
+						$5.traducao +
+						"\n\tgoto " + $6.label + ";\n" +
+						"\n\t" + fim + ":" + $6.traducao;
+
+			}
+
+			| TK_ELSE TK_DOTS BLOCO
+			{
+				$$.label = generateLabel();
+				$$.traducao = "\n" + $3.traducao + "\n\t" + $$.label + ":\n";
+
+			}
+
+
+			;
+
+
+ATRIBUICAO 	: TIPO TK_ID ';'
+			{
+				std::map<string, atributos> *mapLocal = &varMap.back();
+
+				if(mapLocal->find($2.label) != mapLocal->end()) {
+					yyerror("Variavel ja declarada localmente");
+				}
+				else {
+					$$.label = generateVar();
+					$$.tipo = $1.tipo;
+					varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+					(*mapLocal)[$2.label] = $$;
+				}
+					
+
+			}
+
+			| TIPO TK_ID TK_ATRIB E ';'
+			{	
+				std::map<string, atributos> *mapLocal = &varMap.back();
+				if(mapLocal->find($2.label) != mapLocal->end()) {
+        			yyerror("Variavel usada para atribuicao ja declarada");	
+				}
+				else if( $1.tipo == $4.tipo ){
+					if (mapLocal->find($4.label) != mapLocal->end())	{
+						$$.label = generateVar();
+						$$.tipo = $1.tipo;
+						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
+						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+						(*mapLocal)[$2.label] = $$;
+					}
+					else {
+					$$.label = $4.label;
+					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
+					$$.tipo = $1.tipo;
+					(*mapLocal)[$2.label] = $$;
+					}
+				}
+				else {
+					yyerror("Atribuicao de tipos nao compativeis");
+				}
+			}
+			| TK_ID TK_ATRIB E ';'
+			{
+				std::map<string, atributos> *mapLocal = &varMap.back();
+				
+				if(mapLocal->find($1.label) != mapLocal->end()) {
+					if((*mapLocal)[$1.label].tipo == $3.tipo) {
+						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
+					}
+					else {
+						yyerror("Tipos nao compativeis");
+					}
+				}
+				else {
+					$$.label = $3.label;
+					$$.tipo = $3.tipo;
+					$$.traducao = $3.traducao;
+					(*mapLocal)[$1.label] = $$;
+
+				}
+			}
+			;
+
 
 TIPO 		: TK_TIPO_INT
 			{
