@@ -51,26 +51,29 @@ extern int yydebug;
     TK_CHAR = 261,
     TK_IF = 262,
     TK_ELSE = 263,
-    TK_MAIN = 264,
-    TK_ID = 265,
-    TK_TIPO_INT = 266,
-    TK_TIPO_FLOAT = 267,
-    TK_TIPO_BOOL = 268,
-    TK_TIPO_CHAR = 269,
-    TK_DOTS = 270,
-    TK_FIM = 271,
-    TK_ERROR = 272,
-    TK_ATRIB = 273,
-    TK_OR = 274,
-    TK_AND = 275,
-    TK_NOT = 276,
-    TK_IGUAL = 277,
-    TK_DIFERENTE = 278,
-    TK_MAIOR = 279,
-    TK_MENOR = 280,
-    TK_MAIORI = 281,
-    TK_MENORI = 282,
-    TK_MOD = 283
+    TK_FOR = 264,
+    TK_DO = 265,
+    TK_WHILE = 266,
+    TK_MAIN = 267,
+    TK_ID = 268,
+    TK_TIPO_INT = 269,
+    TK_TIPO_FLOAT = 270,
+    TK_TIPO_BOOL = 271,
+    TK_TIPO_CHAR = 272,
+    TK_DOTS = 273,
+    TK_FIM = 274,
+    TK_ERROR = 275,
+    TK_ATRIB = 276,
+    TK_OR = 277,
+    TK_AND = 278,
+    TK_NOT = 279,
+    TK_IGUAL = 280,
+    TK_DIFERENTE = 281,
+    TK_MAIOR = 282,
+    TK_MENOR = 283,
+    TK_MAIORI = 284,
+    TK_MENORI = 285,
+    TK_MOD = 286
   };
 #endif
 /* Tokens.  */
@@ -80,26 +83,29 @@ extern int yydebug;
 #define TK_CHAR 261
 #define TK_IF 262
 #define TK_ELSE 263
-#define TK_MAIN 264
-#define TK_ID 265
-#define TK_TIPO_INT 266
-#define TK_TIPO_FLOAT 267
-#define TK_TIPO_BOOL 268
-#define TK_TIPO_CHAR 269
-#define TK_DOTS 270
-#define TK_FIM 271
-#define TK_ERROR 272
-#define TK_ATRIB 273
-#define TK_OR 274
-#define TK_AND 275
-#define TK_NOT 276
-#define TK_IGUAL 277
-#define TK_DIFERENTE 278
-#define TK_MAIOR 279
-#define TK_MENOR 280
-#define TK_MAIORI 281
-#define TK_MENORI 282
-#define TK_MOD 283
+#define TK_FOR 264
+#define TK_DO 265
+#define TK_WHILE 266
+#define TK_MAIN 267
+#define TK_ID 268
+#define TK_TIPO_INT 269
+#define TK_TIPO_FLOAT 270
+#define TK_TIPO_BOOL 271
+#define TK_TIPO_CHAR 272
+#define TK_DOTS 273
+#define TK_FIM 274
+#define TK_ERROR 275
+#define TK_ATRIB 276
+#define TK_OR 277
+#define TK_AND 278
+#define TK_NOT 279
+#define TK_IGUAL 280
+#define TK_DIFERENTE 281
+#define TK_MAIOR 282
+#define TK_MENOR 283
+#define TK_MAIORI 284
+#define TK_MENORI 285
+#define TK_MOD 286
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

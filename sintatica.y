@@ -9,25 +9,31 @@
 
 using namespace std;
 
-string generateVar(){
+string generateVar() {
 
 	static unsigned int i = 1;
 	return "TMP" + to_string(i++);
 }
 
-string generateLabel(){
+string generateLabel() {
 
 	static unsigned int i = 1;
-	return "fimIf" + to_string(i++);
+	return "label_" + to_string(i++);
 }
 
-typedef struct atributos
-{
+typedef struct atributos {
+
 	string label;
 	string traducao;
 	string tipo;
-
 }atributos;
+
+typedef struct loopLabel {
+
+	string inicio;		
+	string progressao;
+	string fim;
+}loopLabel;
 
 //DECLARACOES DE FUNCOES
 
@@ -41,32 +47,29 @@ atributos* findVar(string label);
 
 string findTmpName(string label);
 
+void empLoop();
+
+void desempLoop();
+
+loopLabel* getLoop();
+
+loopLabel* getOuterLoop();
+
 int yylex(void);
 void yyerror(string);
 
 //Pilha de variaveis
 std::vector<map<string, atributos>> varMap;
 
+//Pilha de labels de loop
+std::vector<loopLabel> loopMap;
+
 //String para declaracao de var
 string varDeclar;
 
-bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
-
-	std::map<string, atributos> *mapLocal = &varMap.back();
-
-	if(mapLocal->find(label) != mapLocal->end()) return false;
-
-	atrib.label = generateVar();
-	atrib.tipo = tipo;
-	(*mapLocal)[label] = atrib;
-
-	cout << atrib.label << endl;
-	return true;
-}
-
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF TK_ELSE
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS
 %token TK_FIM TK_ERROR
 
@@ -102,7 +105,24 @@ ESCOPO_INICIO: {
 				$$.label = "";
 			};
 			
-ESCOPO_FIM:	{
+ESCOPO_FIM	:	{
+				desempContexto();
+				
+				$$.traducao = "";
+				$$.label = "";
+			};
+
+
+LOOP_INICIO	:{
+				empLoop();
+				empContexto();
+				
+				$$.traducao = "";
+				$$.label = "";
+			};
+			
+LOOP_FIM	:	{
+				desempLoop();
 				desempContexto();
 				
 				$$.traducao = "";
@@ -448,7 +468,10 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 				
 			}
 
-			//LOOP VAI ENTRAR AQUI TB COM |
+			| LOOP_INICIO LOOP LOOP_FIM
+			{
+				$$.traducao = $2.traducao;
+			}
 
 			;
 
@@ -472,7 +495,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 
 			| TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT
 			{
-				if($3.tipo != "unsigned char") yyerror("Tipo da expressao do if DEVE ser bool");
+				if($3.tipo != "unsigned char") yyerror("Tipo da expressao do else if DEVE ser bool");
 
 				string var = generateVar();
 				string fim = generateLabel();
@@ -564,6 +587,24 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 			}
 			;
 
+LOOP 		: TK_WHILE E TK_DOTS BLOCO 
+			{
+				if ($2.tipo != "unsigned char") yyerror("Tipo da expressao do while DEVE ser bool");
+
+				string var = generateVar();
+				loopLabel* loop = getLoop();
+					
+				varDeclar += "int " + var + ";\n\t";
+					
+				$$.traducao = "\t" + loop->inicio + ":\n\t" 
+					+ loop->progressao + ":\n" + $2.traducao
+					+ "\t" + var + " = !" + $2.label + ";\n" +
+					"\tif (" + var + ") goto " + loop->fim + ";\n" +
+					$4.traducao +
+					"\tgoto " + loop->inicio + ";\n\t" + loop->fim + ":\n";
+				
+			}
+
 
 TIPO 		: TK_TIPO_INT
 			{
@@ -608,13 +649,42 @@ void yyerror( string MSG )
 
 //FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
 void empContexto() {
-	map<string, atributos> novoMapa;
-	varMap.push_back(novoMapa);
+	map<string, atributos> mapa;
+	varMap.push_back(mapa);
 }
 
 void desempContexto() {
 	return varMap.pop_back();
 }
+//FUNCOES PARA CONTROLE DOS BLOCOS DE LOOP
+void empLoop() {
+	string inicio = generateLabel();
+	string progressao = generateLabel();
+	string fim = generateLabel();
+	loopLabel novo = {inicio, progressao, fim};
+	loopMap.push_back(novo);
+}
+
+void desempLoop() {
+	return loopMap.pop_back();
+}
+
+loopLabel* getLoop() {
+	if (loopMap.size()) {
+		return &loopMap[loopMap.size() - 1];
+	} else {
+		return nullptr;
+	}
+}
+
+loopLabel* getOuterLoop() {
+	if (loopMap.size()) {
+		return &loopMap[0];
+	} else {
+		return nullptr;
+	}
+}
+
 //FUNCOES DE PROCURA DE VARIAVEL
 
 atributos* findVarOnTop(string label) {

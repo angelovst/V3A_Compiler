@@ -1,7 +1,6 @@
 main()
 {
-	if true : {}
-	else if true : {}
-	else if true : { a = 5; }
-	else : {}
+	while 1 > 2 : {
+		
+	}
 }	
