@@ -2,74 +2,9 @@
 #include <iostream>
 #include <string>
 #include <sstream>
-#include <map>
-#include <vector>
 #include <algorithm>
+#include "helper.h"
 #define YYSTYPE atributos
-
-#define TIPO_INT "int"
-#define TIPO_FLOAT "float"
-#define TIPO_BOOL "unsigend char"
-#define TIPO_CHAR "char"
-#define TIPO_LIST "list"
-#define TIPO_INFIX_OPERATOR "operator inf"
-
-using namespace std;
-
-string generateLabel(){
-
-	static unsigned int i = 0;
-	return "TMP" + to_string(i++);
-}
-
-typedef struct {
-	string traducao;
-	size_t size;
-} Tipo;
-Tipo tipo_int = { TIPO_INT, sizeof(int) };
-Tipo tipo_float = { TIPO_FLOAT, sizeof(float) };
-Tipo tipo_bool = { TIPO_BOOL, sizeof(unsigned char) };
-Tipo tipo_char = { TIPO_CHAR, sizeof(char) };
-Tipo tipo_list = { TIPO_LIST, sizeof(size_t)+2*sizeof(void*) };
-
-typedef struct atributos
-{
-	string label;
-	string traducao;
-	Tipo tipo;
-
-}atributos;
-
-//DECLARACOES DE FUNCOES
-
-atributos* findVarOnTop(string label);
-
-atributos* findVar(string label);
-
-string findTmpName(string label);
-
-int yylex(void);
-void yyerror(string);
-
-//Pilha de variaveis
-std::vector<map<string, atributos>> varMap;
-
-//String para declaracao de var
-string varDeclar;
-
-bool declaracaoLocal(string &tipo, string &label, struct atributos &atrib){
-
-	std::map<string, atributos> *mapLocal = &varMap.back();
-
-	if(mapLocal->find(label) != mapLocal->end()) return false;
-
-	atrib.label = generateLabel();
-	atrib.tipo = tipo;
-	(*mapLocal)[label] = atrib;
-
-	cout << atrib.label << endl;
-	return true;
-}
 
 %}
 
@@ -137,7 +72,7 @@ COMANDO 	: E ';'
 				else {
 					$$.label = generateLabel();
 					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo.traducao + " " + $$.label + ";\n\t";
+					varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
 					(*mapLocal)[$2.label] = $$;
 				}
 					
@@ -150,12 +85,12 @@ COMANDO 	: E ';'
 				if(mapLocal->find($2.label) != mapLocal->end()) {
         			yyerror("Variavel usada para atribuicao ja declarada");	
 				}
-				else if( $1.tipo.traducao == $4.tipo.traducao ){
+				else if( $1.tipo->label == $4.tipo->label ){
 					if (mapLocal->find($4.label) != mapLocal->end())	{
 						$$.label = generateLabel();
 						$$.tipo = $1.tipo;
 						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
-						varDeclar += $1.traducao + $2.traducao + $$.tipo + " " + $$.label + ";\n\t";
+						varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
 						(*mapLocal)[$2.label] = $$;
 					}
 					else {
@@ -174,7 +109,7 @@ COMANDO 	: E ';'
 				std::map<string, atributos> *mapLocal = &varMap.back();
 				
 				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo.traducao == $3.tipo.traducao) {
+					if((*mapLocal)[$1.label].tipo->label == $3.tipo->label) {
 						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
 					}
 					else {
@@ -195,25 +130,14 @@ COMANDO 	: E ';'
 E 			: E OP_INFIX E {
 				$$.label = generateLabel();
 				$$.traducao = $1.traducao + $3.traducao;
-				string var1 = $1.label, var2 = $3.label;
-				int needsCast = compatibleTypes(&$1.tipo, &$2.tipo);
-				
+				string var1, var2;
+				string cast = implicitCast (&$1, &$2, &var1, &var2);
 				
 				//cast
-				if (needsCast) {
-					if (needsCast & CAST_1ST) {
-						//needs to cast $1 to $3 
-						var1 = generateLabel();
-						varDeclar += $3.tipo.traducao + ' ' + var1 + "\n\t";
-						$$.traducao = $$.traducao + "\t" + var1 + " = " + '(' + $3.tipo.traducao + ')' + $1.label + ";\n";
-					} else if (needsCast & CAST_2ND) {
-						//needs to cast $3 to $1
-						var2 = generateLabel();
-						varDeclar += $1.tipo.traducao + ' ' + var2 + "\n\t";
-						$$.traducao = $$.traducao + "\t" + var2 + " = " + '(' + $1.tipo.traducao + ')' + $3.label + ";\n";
-					} else {
-						yyerror("Operacao infixa " + $2.traducao + " invalida para tipos " + $1.tipo.traducao + " e " + $2.tipo.traducao);
-					}	
+				if (cast == INVALID_CAST) {
+					yyerror("Operacao infixa " + $2.label + " invalida para tipos " + $1.tipo->label + " e " + $2.tipo->label);	
+				} else {
+					$$.traducao += "\t" + cast;
 				}
 				
 				$$.traducao += $$.label + " = " + var1 + $2.traducao + var2 + ";\n";
@@ -223,9 +147,9 @@ E 			: E OP_INFIX E {
 			{	
 				
 				$$.label = generateLabel();
-				varDeclar += $2.tipo + " " + $$.label + ";\n\t";
+				varDeclar += $2.tipo->label + " " + $$.label + ";\n\t";
 				$$.tipo = $2.tipo;
-				$$.traducao = $4.traducao + "\t" + $$.label + " =" + '(' + $2.tipo + ')' + $4.label + ";\n";
+				$$.traducao = $4.traducao + "\t" + $$.label + " =" + '(' + $2.tipo->label + ')' + $4.label + ";\n";
 			}
 
 			| '(' E ')'
@@ -243,14 +167,14 @@ E 			: E OP_INFIX E {
 				$$.label = generateLabel();
 				varDeclar += "int " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
-				$$.tipo = TIPO_INT;
+				$$.tipo = &tipo_int;
 			}
 			| TK_FLOAT
 			{
 				$$.label = generateLabel();
 				varDeclar += "float " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
-				$$.tipo = TIPO_FLOAT;
+				$$.tipo = &tipo_float;
 			}
 			| TK_BOOL
 			{
@@ -266,7 +190,7 @@ E 			: E OP_INFIX E {
 				$$.label = generateLabel();
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + aux + ";\n";
-				$$.tipo = TIPO_BOOL;
+				$$.tipo = &tipo_bool;
 
 			}
 			| TK_CHAR
@@ -274,7 +198,7 @@ E 			: E OP_INFIX E {
 				$$.label = generateLabel();
 				varDeclar += "char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
-				$$.tipo = TIPO_CHAR;
+				$$.tipo = &tipo_char;
 			}
 			| TK_ID
 			{
@@ -288,8 +212,8 @@ E 			: E OP_INFIX E {
         			$$.label = varMap[$1.label].label;
 				}*/
 				else {
-				$$.label = generateLabel();
-				$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
+					$$.label = generateLabel();
+					$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
 				}
 			}
 			
@@ -298,83 +222,89 @@ E 			: E OP_INFIX E {
 			
 OP_INFIX	: TK_PLUS
 			{
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "+";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MINUS {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "-";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MULT {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "*";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_DIV {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "/";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MOD {
-				$$.tipo = TK_INFIX_OPERATOR;
-			}
-			| TK_MINUS  {
-				$$.tipo = TK_INFIX_OPERATOR;
-			}
-			| TK_MULT  {
-				$$.tipo = TK_INFIX_OPERATOR;
-			}
-			| TK_DIV  {
-				$$.tipo = TK_INFIX_OPERATOR;
-			}
-			| TK_MOD  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "%";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_AND  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "&&";
+				$$.tipo = &tipo_inf_operator;
 			}
-			| TK_OR  {
-				$$.tipo = TK_INFIX_OPERATOR;
+			| TK_OR {
+				$$.label = "||";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_DIFERENTE  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "!=";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_IGUAL  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "==";
+				$$.tipo = &tipo_inf_operator;
 			}
-			| TK_MAIOR  {
-				$$.tipo = TK_INFIX_OPERATOR;
+			| TK_MAIOR {
+				$$.label = ">";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MENOR  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "<";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MAIORI  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = ">=";
+				$$.tipo = &tipo_inf_operator;
 			}
 			| TK_MENORI  {
-				$$.tipo = TK_INFIX_OPERATOR;
+				$$.label = "<=";
+				$$.tipo = &tipo_inf_operator;
 			}
 			;
 
 TIPO 		: TK_TIPO_INT
 			{
-				$$.tipo = TIPO_INT;
+				$$.tipo = &tipo_int;
 			}
 			| TK_TIPO_FLOAT
 			{
-				$$.tipo = TIPO_FLOAT;
+				$$.tipo = &tipo_float;
 			}
 			| TK_TIPO_BOOL
 			{
-				$$.tipo = TIPO_BOOL;
+				$$.tipo = &tipo_bool;
 			}
 			| TK_TIPO_CHAR
 			{
-				$$.tipo = TIPO_CHAR;
+				$$.tipo = &tipo_char;
 			}
 			| TK_TIPO_LIST
 			{
-				$$.tipo = TIPO_LIST;
+				$$.tipo = &tipo_list;
 			}	
 			;
 
 %%
 
 #include "lex.yy.c"
+
+using namespace std;
+
+int yylex(void);
+void yyerror(string);
 
 int yyparse();
 
@@ -383,7 +313,9 @@ int main( int argc, char* argv[] )
 	map<string, atributos> mapaGlobal;
 	varMap.push_back(mapaGlobal);
 
+	cout << "parsing" << endl;	//debug
 	yyparse();
+	cout << "parsed" << endl;	//debug
 
 	return 0;
 }
@@ -393,39 +325,3 @@ void yyerror( string MSG )
 	cout << MSG << endl;
 	exit (0);
 }		
-
-//FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
-void empContexto() {
-	map<string, atributos> novoMapa;
-	varMap.push_back(novoMapa);
-}
-
-void desempContexto() {
-	return varMap.pop_back();
-}
-//FUNCOES DE PROCURA DE VARIAVEL
-
-atributos* findVarOnTop(string label) {
-	if (varMap[varMap.size() - 1].count(label)) {
-		return &varMap[varMap.size() - 1][label];
-	}
-	
-	return nullptr;
-}
-
-atributos* findVar(string label) {
-	for (int i = varMap.size() - 1; i >= 0; i--) {
-		if (varMap[i].count(label)) {
-			return &varMap[i][label];
-		}
-	}	
-	return nullptr;
-}
-string findTmpName(string label) {
-	for (int i = varMap.size() - 1; i >= 0; i--) {
-		if (varMap[i].count(label)) {
-			return varMap[i][label].label;
-		}
-	}	
-	return "null";
-}

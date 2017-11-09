@@ -1,0 +1,65 @@
+#ifndef HELPER_INCLUDED_H
+#define HELPER_INCLUDED_H
+
+#include <string>
+#include <vector>
+#include <map>
+#include <stdlib.h>
+
+#define TIPO_INT "int"
+#define TIPO_FLOAT "float"
+#define TIPO_BOOL "unsigend char"
+#define TIPO_CHAR "char"
+#define TIPO_LIST "list"
+#define TIPO_INFIX_OPERATOR "operator inf"
+
+#define INVALID_CAST "invalid cast"
+#define UNCASTABLE -1
+#define NUMBER_SUBSET 3
+
+typedef struct {
+	std::string label;
+	size_t size;
+	std::string (*traducaoParcial)(void *args);
+	int subset;
+} Tipo;
+
+typedef struct atributos {
+	std::string label;
+	std::string traducao;
+	Tipo *tipo;
+} atributos;
+
+
+//DECLARACOES DE FUNCOES
+atributos* findVarOnTop(std::string label);
+
+atributos* findVar(std::string label);
+
+std::string findTmpName(std::string label);
+
+std::string generateLabel (void);
+
+bool declaracaoLocal(std::string &tipo, std::string &label, atributos &atrib);
+
+std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);
+
+//FUNCOES DE OPERADORES
+std::string traducaoInfixaPadrao (void *args);
+
+//VARIAVEIS GLOBAIS
+//Pilha de variaveis
+extern std::vector<std::map<std::string, atributos>> varMap;
+
+//String para declaracao de var
+extern std::string varDeclar;
+
+extern Tipo tipo_float;
+extern Tipo tipo_int;
+
+extern Tipo tipo_bool;
+extern Tipo tipo_char;
+extern Tipo tipo_list;
+extern Tipo tipo_inf_operator;
+
+#endif

@@ -38,12 +38,12 @@ ID {LETRA}({LETRA}|{INT})*
 "/"			{return TK_DIV;}
 "%"			{return TK_MOD;}
 
-"!"			{ return TK_NOT;}
-"&&"		{ return TK_AND;}
-"||" 		{ return TK_OR;}
-"!="		{ return TK_DIFERENTE;}
-"="			{ return TK_ATRIB;}
-"=="		{ return TK_IGUAL;}
+"~"			{ return TK_NOT;}
+"and"		{ return TK_AND;}
+"or" 		{ return TK_OR;}
+"~="		{ return TK_DIFERENTE;}
+"<-"		{ return TK_ATRIB;}
+"="			{ return TK_IGUAL;}
 ">" 		{ return TK_MAIOR;}
 "<"			{ return TK_MENOR;}
 ">="		{ return TK_MAIORI;}
