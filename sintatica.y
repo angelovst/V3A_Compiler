@@ -469,6 +469,7 @@ LOOP 		: TK_WHILE E TK_DOTS BLOCO
 					"\tgoto " + loop->inicio + ";\n\t" + loop->fim + ":\n";
 				
 			}
+			;
 
 TIPO 		: TK_TIPO_INT
 			{

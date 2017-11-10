@@ -352,7 +352,7 @@ typedef struct {
 } YYSTACKDATA;
 /* variables for the parser stack */
 static YYSTACKDATA yystack;
-#line 496 "sintatica.y"
+#line 497 "sintatica.y"
 
 #include "lex.yy.c"
 
@@ -1093,31 +1093,31 @@ case 47:
 			}
 break;
 case 48:
-#line 474 "sintatica.y"
+#line 475 "sintatica.y"
 	{
 				yyval.tipo = &tipo_int;
 			}
 break;
 case 49:
-#line 478 "sintatica.y"
+#line 479 "sintatica.y"
 	{
 				yyval.tipo = &tipo_float;
 			}
 break;
 case 50:
-#line 482 "sintatica.y"
+#line 483 "sintatica.y"
 	{
 				yyval.tipo = &tipo_bool;
 			}
 break;
 case 51:
-#line 486 "sintatica.y"
+#line 487 "sintatica.y"
 	{
 				yyval.tipo = &tipo_char;
 			}
 break;
 case 52:
-#line 490 "sintatica.y"
+#line 491 "sintatica.y"
 	{
 				yyval.tipo = &tipo_list;
 			}
