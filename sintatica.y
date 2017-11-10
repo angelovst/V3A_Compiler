@@ -6,6 +6,13 @@
 #include "helper.h"
 #define YYSTYPE atributos
 
+using namespace std;
+
+int yylex(void);
+void yyerror(string);
+
+int yyparse();
+
 %}
 
 %token TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_CHAR TK_TIPO_LIST;
@@ -37,7 +44,7 @@ MAIN		: '{' COMANDOS '}'
 			;
 
 ESCOPO_INICIO: {
-				cout << "contexto empilhado" << endl;	//debug
+				//cout << "contexto empilhado" << endl;	//debug
 				empContexto();
 				
 				$$.traducao = "";
@@ -45,7 +52,7 @@ ESCOPO_INICIO: {
 			};
 			
 ESCOPO_FIM	:	{
-				cout << "contexto desempilhado" << endl;	//debug
+				//cout << "contexto desempilhado" << endl;	//debug
 				desempContexto();
 				
 				$$.traducao = "";
@@ -75,7 +82,7 @@ BLOCO		: ESCOPO_INICIO '{' COMANDOS '}' ESCOPO_FIM {
 
 COMANDOS	: COMANDO COMANDOS
 			{
-				cout << "comando traduzido" << endl;	//debug
+				//cout << "comando traduzido" << endl;	//debug
 				$$.traducao = $1.traducao + $2.traducao;
 			}
 			| {$$.traducao = "";}
@@ -85,7 +92,7 @@ COMANDO 	: E ';'
 
 			| TIPO TK_ID ';'
 			{
-				cout << "variavel declarada" << endl;	//debug
+				//cout << "variavel declarada" << endl;	//debug
 				std::map<string, atributos> *mapLocal = &varMap.back();
 
 				if(mapLocal->find($2.label) != mapLocal->end()) {
@@ -108,7 +115,7 @@ COMANDO 	: E ';'
 			;
 
 E 			: E OP_INFIX E {
-				cout << "operacao infixa executada" << endl;	//debug
+				//cout << "operacao infixa executada" << endl;	//debug
 				$$.label = generateVarLabel();
 				$$.traducao = $1.traducao + $3.traducao;
 				string var1, var2;
@@ -119,7 +126,7 @@ E 			: E OP_INFIX E {
 			}
 			| '(' TIPO ')' E
 			{	
-				cout << "cast executado" << endl;	//debug
+				//cout << "cast executado" << endl;	//debug
 				$$.label = generateVarLabel();
 				varDeclar += $2.tipo->label + " " + $$.label + ";\n\t";
 				$$.tipo = $2.tipo;
@@ -128,13 +135,13 @@ E 			: E OP_INFIX E {
 
 			| '(' E ')'
 			{
-				cout << "parentizacao feita" << endl;	//debug
+				//cout << "parentizacao feita" << endl;	//debug
 				$$.label = $2.label; //generateVarLabel();
 				$$.traducao = $2.traducao;// + "\t" + $$.label + " = " + $2.label + ";\n";
 			}
 			| '-' E
 			{
-				cout << "inversao feita" << endl;	//debug
+				//cout << "inversao feita" << endl;	//debug
 				$$.label = generateVarLabel();
 				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
 			}
@@ -448,13 +455,6 @@ TIPO 		: TK_TIPO_INT
 %%
 
 #include "lex.yy.c"
-
-using namespace std;
-
-int yylex(void);
-void yyerror(string);
-
-int yyparse();
 
 int main( int argc, char* argv[] )
 {
