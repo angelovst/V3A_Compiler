@@ -30,19 +30,31 @@ typedef struct atributos {
 	Tipo *tipo;
 } atributos;
 
+typedef struct loopLabel {
+	std::string inicio;		
+	std::string progressao;
+	std::string fim;
+} loopLabel;
 
-//DECLARACOES DE FUNCOES
+
+//VARIAVEIS
 atributos* findVarOnTop(std::string label);
-
 atributos* findVar(std::string label);
-
 std::string findTmpName(std::string label);
-
-std::string generateLabel (void);
-
+std::string generateVarLabel (void);
 bool declaracaoLocal(std::string &tipo, std::string &label, atributos &atrib);
-
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);
+
+//CONTEXTO
+void empContexto();
+void desempContexto();
+
+//LOOP
+void empLoop();
+void desempLoop();
+loopLabel* getLoop();
+loopLabel* getOuterLoop();
+std::string generateLoopLabel (void);
 
 //FUNCOES DE OPERADORES
 std::string traducaoInfixaPadrao (void *args);
@@ -54,6 +66,7 @@ extern std::vector<std::map<std::string, atributos>> varMap;
 //String para declaracao de var
 extern std::string varDeclar;
 
+//Tipos
 extern Tipo tipo_float;
 extern Tipo tipo_int;
 
@@ -61,5 +74,8 @@ extern Tipo tipo_bool;
 extern Tipo tipo_char;
 extern Tipo tipo_list;
 extern Tipo tipo_inf_operator;
+
+//Pilha de labels de loop
+extern std::vector<loopLabel> loopMap;
 
 #endif

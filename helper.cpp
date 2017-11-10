@@ -16,16 +16,11 @@ std::vector<std::map<std::string, atributos>> varMap;
 //String para declaracao de var
 std::string varDeclar;
 
+//Pilha de labels de loop
+std::vector<loopLabel> loopMap;
+
 using namespace std;
 
-void empContexto() {
-	map<string, atributos> novoMapa;
-	varMap.push_back(novoMapa);
-}
-
-void desempContexto() {
-	return varMap.pop_back();
-}
 //FUNCOES DE PROCURA DE VARIAVEL
 
 atributos* findVarOnTop(string label) {
@@ -53,7 +48,7 @@ string findTmpName(string label) {
 	return "null";
 }
 
-string generateLabel (void) {
+string generateVarLabel (void) {
 	static unsigned int i = 0;
 	return "TMP" + to_string(i++);
 }	
@@ -64,7 +59,7 @@ bool declaracaoLocal(Tipo *tipo, string &label, struct atributos &atrib){
 
 	if(mapLocal->find(label) != mapLocal->end()) return false;
 
-	atrib.label = generateLabel();
+	atrib.label = generateVarLabel();
 	atrib.tipo = tipo;
 	(*mapLocal)[label] = atrib;
 
@@ -83,14 +78,14 @@ string implicitCast (atributos *var1, atributos *var2, string *label1, string *l
 		*label2 = var2->label;
 		return "";
 	} else if (cast < 0) {	//cast var1 para var2
-		*label1 = generateLabel();
+		*label1 = generateVarLabel();
 		varDeclar += var2->tipo->label + " " + *label1 + "\n\t";
 		*label2 = var2->label;
 		return *label1 + " = (" + var2->tipo->label + ")" + var1->label + "\n";
 	}
 	//cast var2 para var1
 	*label1 = var1->label;
-	*label2 = generateLabel();
+	*label2 = generateVarLabel();
 	varDeclar += var1->tipo->label + " " + *label2 + "\n\t";
 	return *label2 + " = (" + var1->tipo->label + ")" + var2->label + "\n";
 }
@@ -102,4 +97,47 @@ string traducaoInfixaPadrao (void *args)  {
 	atributos t2 = operando[2];
 	
 	return t1.label + self.label + t2.label;
+}
+
+string generateLoopLabel (void) {
+	static unsigned int i = 0;
+	return "LOOP" + to_string(i++);
+}
+
+//FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
+void empContexto (void) {
+	map<string, atributos> mapa;
+	varMap.push_back(mapa);
+}
+
+void desempContexto (void) {
+	return varMap.pop_back();
+}
+//FUNCOES PARA CONTROLE DOS BLOCOS DE LOOP
+void empLoop() {
+	string inicio = generateLoopLabel();
+	string progressao = generateLoopLabel();
+	string fim = generateLoopLabel();
+	loopLabel novo = {inicio, progressao, fim};
+	loopMap.push_back(novo);
+}
+
+void desempLoop() {
+	return loopMap.pop_back();
+}
+
+loopLabel* getLoop() {
+	if (loopMap.size()) {
+		return &loopMap[loopMap.size() - 1];
+	} else {
+		return nullptr;
+	}
+}
+
+loopLabel* getOuterLoop() {
+	if (loopMap.size()) {
+		return &loopMap[0];
+	} else {
+		return nullptr;
+	}
 }

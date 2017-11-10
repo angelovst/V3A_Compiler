@@ -24,6 +24,14 @@ ID {LETRA}({LETRA}|{INT})*
 
 "if"		{return TK_IF;}
 
+"else"		{return TK_ELSE;}
+
+"for"		{return TK_FOR;}
+
+"do"		{return TK_DO;}
+
+"while"		{return TK_WHILE;}
+
 "int"		{return TK_TIPO_INT;}
 
 "float"		{return TK_TIPO_FLOAT;}
@@ -48,6 +56,7 @@ ID {LETRA}({LETRA}|{INT})*
 "<"			{ return TK_MENOR;}
 ">="		{ return TK_MAIORI;}
 "<="		{ return TK_MENORI;}
+":"			{ return TK_DOTS;}
 
 [(){}[\];,]	{ return *yytext; }
 
