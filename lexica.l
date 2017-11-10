@@ -20,25 +20,18 @@ ID {LETRA}({LETRA}|{INT})*
 
 {DELIM} 	{}
 
-"main"		{return TK_MAIN;}
-
-"if"		{return TK_IF;}
-
-"else"		{return TK_ELSE;}
-
-"for"		{return TK_FOR;}
-
-"do"		{return TK_DO;}
-
-"while"		{return TK_WHILE;}
-
 "int"		{return TK_TIPO_INT;}
-
 "float"		{return TK_TIPO_FLOAT;}
-
 "bool"		{return TK_TIPO_BOOL;}
-
 "char"		{return TK_TIPO_CHAR;}
+"list"		{return TK_TIPO_LIST;}
+
+"main"		{return TK_MAIN;}
+"if"		{return TK_IF;}
+"else"		{return TK_ELSE;}
+"for"		{return TK_FOR;}
+"do"		{return TK_DO;}
+"while"		{return TK_WHILE;}
 
 "+"			{return TK_PLUS;}
 "-"			{return TK_MINUS;}
@@ -62,10 +55,10 @@ ID {LETRA}({LETRA}|{INT})*
 
 [+\-*/]		{ return *yytext; }
 
-{INT}		{ yylval.label = yytext; return TK_INT; }
-{FLOAT}		{ yylval.label = yytext; return TK_FLOAT; }
-{BOOL}		{ yylval.label = yytext; return TK_BOOL; }
-{CHAR}		{ yylval.label = yytext; return TK_CHAR;}
+{INT}		{ yylval.label = yytext; return TK_TIPO_INT; }
+{FLOAT}		{ yylval.label = yytext; return TK_TIPO_FLOAT; }
+{BOOL}		{ yylval.label = yytext; return TK_TIPO_BOOL; }
+{CHAR}		{ yylval.label = yytext; return TK_TIPO_CHAR;}
 {ID}		{ yylval.label = yytext; return TK_ID; }
 
 .			{ *yytext; }

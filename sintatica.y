@@ -8,8 +8,8 @@
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR
-%token TK_MAIN TK_ID tK_IF TK_ELSE TK_FOR TK_DO TK_WHILE TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST
+%token TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_CHAR TK_TIPO_LIST;
+%token TK_MAIN TK_ID TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE TK_DOTS
 %token TK_FIM TK_ERROR
 
 %start S
@@ -100,54 +100,6 @@ COMANDO 	: E ';'
 					
 
 			}
-
-			| TIPO TK_ID TK_ATRIB E ';'
-			{	
-				cout << "variavel declarada com atribuicao" << endl;	//debug
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-        			yyerror("Variavel usada para atribuicao ja declarada");	
-				}
-				else if( $1.tipo->label == $4.tipo->label ){
-					if (mapLocal->find($4.label) != mapLocal->end())	{
-						$$.label = generateVarLabel();
-						$$.tipo = $1.tipo;
-						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
-						varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
-						(*mapLocal)[$2.label] = $$;
-					}
-					else {
-					$$.label = $4.label;
-					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
-					$$.tipo = $1.tipo;
-					(*mapLocal)[$2.label] = $$;
-					}
-				}
-				else {
-					yyerror("Atribuicao de tipos nao compativeis");
-				}
-			}
-			| TK_ID TK_ATRIB E ';'
-			{
-				cout << "variavel atribuida" << endl;	//debug
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				
-				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo->label == $3.tipo->label) {
-						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
-					}
-					else {
-						yyerror("Tipos nao compativeis");
-					}
-				}
-				else {
-					$$.label = $3.label;
-					$$.tipo = $3.tipo;
-					$$.traducao = $3.traducao;
-					(*mapLocal)[$1.label] = $$;
-
-				}
-			}
 			
 			| ATRIBUICAO
 			
@@ -186,21 +138,21 @@ E 			: E OP_INFIX E {
 				$$.label = generateVarLabel();
 				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
 			}
-			| TK_INT
+			| TK_TIPO_INT
 			{
 				$$.label = generateVarLabel();
 				varDeclar += "int " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 				$$.tipo = &tipo_int;
 			}
-			| TK_FLOAT
+			| TK_TIPO_FLOAT
 			{
 				$$.label = generateVarLabel();
 				varDeclar += "float " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 				$$.tipo = &tipo_float;
 			}
-			| TK_BOOL
+			| TK_TIPO_BOOL
 			{
 				string aux;
 				
@@ -217,7 +169,7 @@ E 			: E OP_INFIX E {
 				$$.tipo = &tipo_bool;
 
 			}
-			| TK_CHAR
+			| TK_TIPO_CHAR
 			{
 				$$.label = generateVarLabel();
 				varDeclar += "char " + $$.label + ";\n\t";
