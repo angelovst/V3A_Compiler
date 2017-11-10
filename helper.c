@@ -50,22 +50,8 @@ string findTmpName(string label) {
 
 string generateVarLabel (void) {
 	static unsigned int i = 0;
-	return "TMP" + to_string(i++);
+	return "tmp" + to_string(i++);
 }	
-
-bool declaracaoLocal(Tipo *tipo, string &label, struct atributos &atrib){
-
-	std::map<string, atributos> *mapLocal = &varMap.back();
-
-	if(mapLocal->find(label) != mapLocal->end()) return false;
-
-	atrib.label = generateVarLabel();
-	atrib.tipo = tipo;
-	(*mapLocal)[label] = atrib;
-
-	//cout << atrib.label << endl;	//debug
-	return true;
-}
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
 	if (var1->tipo->subset == UNCASTABLE || var2->tipo->subset == UNCASTABLE) {
@@ -79,29 +65,29 @@ string implicitCast (atributos *var1, atributos *var2, string *label1, string *l
 		return "";
 	} else if (cast < 0) {	//cast var1 para var2
 		*label1 = generateVarLabel();
-		varDeclar += var2->tipo->label + " " + *label1 + "\n\t";
+		varDeclar += var2->tipo->label + " " + *label1 + ";\n\t";
 		*label2 = var2->label;
-		return *label1 + " = (" + var2->tipo->label + ")" + var1->label + "\n";
+		return "\t" + *label1 + " = (" + var2->tipo->label + ")" + var1->label + ";\n";
 	}
 	//cast var2 para var1
 	*label1 = var1->label;
 	*label2 = generateVarLabel();
-	varDeclar += var1->tipo->label + " " + *label2 + "\n\t";
-	return *label2 + " = (" + var1->tipo->label + ")" + var2->label + "\n";
+	varDeclar += var1->tipo->label + " " + *label2 + ";\n\t";
+	return "\t" + *label2 + " = (" + var1->tipo->label + ")" + var2->label + ";\n";
 }
 
 string traducaoInfixaPadrao (void *args)  {
-	atributos *operando = (atributos*)args;
-	atributos self = operando[0];
-	atributos t1 = operando[1];
-	atributos t2 = operando[2];
+	string *operando = (string*)args;
+	string &var1 = operando[0];
+	string &operador = operando[1];
+	string &var2 = operando[2];
 	
-	return t1.label + self.label + t2.label;
+	return var1 + operador + var2;
 }
 
-string generateLoopLabel (void) {
+string generateLabel (void) {
 	static unsigned int i = 0;
-	return "LOOP" + to_string(i++);
+	return "LABEL_" + to_string(i++);
 }
 
 //FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
@@ -115,9 +101,9 @@ void desempContexto (void) {
 }
 //FUNCOES PARA CONTROLE DOS BLOCOS DE LOOP
 void empLoop() {
-	string inicio = generateLoopLabel();
-	string progressao = generateLoopLabel();
-	string fim = generateLoopLabel();
+	string inicio = generateLabel();
+	string progressao = generateLabel();
+	string fim = generateLabel();
 	loopLabel novo = {inicio, progressao, fim};
 	loopMap.push_back(novo);
 }

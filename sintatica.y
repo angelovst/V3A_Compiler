@@ -15,7 +15,7 @@ int yyparse();
 
 %}
 
-%token TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_CHAR TK_TIPO_LIST;
+%token TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST;
 %token TK_MAIN TK_ID TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE TK_DOTS
 %token TK_FIM TK_ERROR
 
@@ -89,24 +89,6 @@ COMANDOS	: COMANDO COMANDOS
 			;
 
 COMANDO 	: E ';'
-
-			| TIPO TK_ID ';'
-			{
-				//cout << "variavel declarada" << endl;	//debug
-				std::map<string, atributos> *mapLocal = &varMap.back();
-
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-					yyerror("Variavel ja declarada localmente");
-				}
-				else {
-					$$.label = generateVarLabel();
-					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
-					(*mapLocal)[$2.label] = $$;
-				}
-					
-
-			}
 			
 			| ATRIBUICAO
 			
@@ -117,11 +99,20 @@ COMANDO 	: E ';'
 E 			: E OP_INFIX E {
 				//cout << "operacao infixa executada" << endl;	//debug
 				$$.label = generateVarLabel();
+				varDeclar += $$.tipo->label + " " + $$.label + ";\n\t";
 				$$.traducao = $1.traducao + $3.traducao;
+				string args[3];
 				string var1, var2;
-				string cast = implicitCast (&$1, &$2, &var1, &var2);
+				string cast = implicitCast (&$1, &$3, &var1, &var2);
 				
-				$$.traducao += $$.label + " = " + var1 + $2.traducao + var2 + ";\n";
+				if (cast == INVALID_CAST) {
+					yyerror("Impossivel converter " + $1.tipo->label + " e " + $3.tipo->label);
+				}
+				
+				args[0] = var1;
+				args[1] = $2.label;
+				args[2] = var2;
+				$$.traducao += cast + "\t" + $$.label + " = " + $2.tipo->traducaoParcial((void*)args) + ";\n";
 				
 			}
 			| '(' TIPO ')' E
@@ -260,10 +251,11 @@ OP_INFIX	: TK_PLUS
 			
 CONTROLE	: TK_IF E TK_DOTS BLOCO
 			{
+				cout << $2.tipo->label << endl;
 				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
 
 				string var = generateVarLabel();
-				string fim = generateLoopLabel();
+				string fim = generateLabel();
 
 				varDeclar += "int " + var + ";\n\t";
 					
@@ -279,7 +271,7 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
 
 				string var = generateVarLabel();
-				string fim = generateLoopLabel();
+				string fim = generateLabel();
 
 				varDeclar += "int " + var + ";\n\t";
 
@@ -304,7 +296,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
 
 				string var = generateVarLabel();
-				string fim = generateLoopLabel();
+				string fim = generateLabel();
 
 				varDeclar += "int " + var + ";\n\t";
 
@@ -322,7 +314,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do else if DEVE ser bool");
 
 				string var = generateVarLabel();
-				string fim = generateLoopLabel();
+				string fim = generateLabel();
 
 				varDeclar += "int " + var + ";\n\t";
 
@@ -338,7 +330,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 
 			| TK_ELSE TK_DOTS BLOCO
 			{
-				$$.label = generateLoopLabel();
+				$$.label = generateLabel();
 				$$.traducao = "\n" + $3.traducao + "\n\t" + $$.label + ":\n";
 
 			}

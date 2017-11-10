@@ -8,7 +8,7 @@
 
 #define TIPO_INT "int"
 #define TIPO_FLOAT "float"
-#define TIPO_BOOL "unsigend char"
+#define TIPO_BOOL "unsigned char"
 #define TIPO_CHAR "char"
 #define TIPO_LIST "list"
 #define TIPO_INFIX_OPERATOR "operator inf"
@@ -54,7 +54,7 @@ void empLoop();
 void desempLoop();
 loopLabel* getLoop();
 loopLabel* getOuterLoop();
-std::string generateLoopLabel (void);
+std::string generateLabel (void);
 
 //FUNCOES DE OPERADORES
 std::string traducaoInfixaPadrao (void *args);

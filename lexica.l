@@ -53,8 +53,6 @@ ID {LETRA}({LETRA}|{INT})*
 
 [(){}[\];,]	{ return *yytext; }
 
-[+\-*/]		{ return *yytext; }
-
 {INT}		{ yylval.label = yytext; return TK_TIPO_INT; }
 {FLOAT}		{ yylval.label = yytext; return TK_TIPO_FLOAT; }
 {BOOL}		{ yylval.label = yytext; return TK_TIPO_BOOL; }
