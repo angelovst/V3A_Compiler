@@ -375,8 +375,8 @@ static void yy_fatal_error (yyconst char msg[]  );
 	*yy_cp = '\0'; \
 	(yy_c_buf_p) = yy_cp;
 
-#define YY_NUM_RULES 37
-#define YY_END_OF_BUFFER 38
+#define YY_NUM_RULES 38
+#define YY_END_OF_BUFFER 39
 /* This struct is not used in this scanner,
    but its presence is necessary. */
 struct yy_trans_info
@@ -386,15 +386,15 @@ struct yy_trans_info
 	};
 static yyconst flex_int16_t yy_accept[85] =
     {   0,
-        0,    0,   38,   36,    2,    1,   18,   36,   30,   16,
-       14,   15,   17,   31,   29,   26,   24,   25,   35,   35,
-       35,   35,   35,   35,   35,   35,   35,   35,   35,   35,
-       35,   19,    2,    0,    0,    0,   31,   23,   28,   27,
-       35,   35,   35,   35,   35,   12,   35,   35,   35,   35,
-        9,   35,   35,   35,   21,   35,   35,   22,   34,   32,
-       20,   35,   35,   35,   35,   35,   11,    3,   35,   35,
-       35,   35,    5,    6,   10,   35,   35,    7,    8,   33,
-       35,    4,   13,    0
+        0,    0,   39,   37,    2,    1,   18,   37,   30,   16,
+       14,   15,   17,   32,   29,   26,   24,   25,   36,   36,
+       36,   36,   36,   36,   36,   36,   36,   36,   36,   36,
+       36,   19,    2,    0,    0,    0,   32,   23,   28,   27,
+       36,   36,   36,   36,   36,   12,   36,   36,   36,   36,
+        9,   36,   36,   36,   21,   36,   36,   22,   35,   33,
+       20,   36,   36,   36,   36,   36,   11,    3,   36,   36,
+       36,   36,    5,    6,   10,   36,   36,    7,    8,   34,
+       36,    4,   13,    0
     } ;
 
 static yyconst YY_CHAR yy_ec[256] =
@@ -960,40 +960,45 @@ YY_RULE_SETUP
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
+#line 56 "lexica.l"
+{ return *yytext; }
+	YY_BREAK
+case 32:
+YY_RULE_SETUP
 #line 58 "lexica.l"
 { yylval.label = yytext; return TK_TIPO_INT; }
 	YY_BREAK
-case 32:
+case 33:
 YY_RULE_SETUP
 #line 59 "lexica.l"
 { yylval.label = yytext; return TK_TIPO_FLOAT; }
 	YY_BREAK
-case 33:
+case 34:
 YY_RULE_SETUP
 #line 60 "lexica.l"
 { yylval.label = yytext; return TK_TIPO_BOOL; }
 	YY_BREAK
-case 34:
+case 35:
 YY_RULE_SETUP
 #line 61 "lexica.l"
 { yylval.label = yytext; return TK_TIPO_CHAR;}
 	YY_BREAK
-case 35:
+case 36:
 YY_RULE_SETUP
 #line 62 "lexica.l"
 { yylval.label = yytext; return TK_ID; }
 	YY_BREAK
-case 36:
+case 37:
 YY_RULE_SETUP
 #line 64 "lexica.l"
 { *yytext; }
 	YY_BREAK
-case 37:
+case 38:
 YY_RULE_SETUP
 #line 66 "lexica.l"
 ECHO;
 	YY_BREAK
-#line 997 "lex.yy.c"
+#line 1002 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
