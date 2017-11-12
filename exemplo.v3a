@@ -1,6 +1,13 @@
 main()
-{
-	while 1 > 2 : {
-		
-	}
-}	
+{	
+	int oi;
+	int a;
+	int b;
+
+	b = oi++;
+
+
+
+
+
+}

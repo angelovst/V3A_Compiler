@@ -70,7 +70,7 @@ string varDeclar;
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS TK_2MAIS TK_2MENOS
 %token TK_FIM TK_ERROR
 
 %start S
@@ -82,6 +82,7 @@ string varDeclar;
 %left '+' '-'
 %left '*' '/'
 %left TK_MOD
+%right TK_2MAIS TK_2MENOS
 
 %%
 
@@ -150,33 +151,58 @@ COMANDO 	: E ';'
 
 E 			: E '+' E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 
 				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
-				if($1.tipo == "int" && $3.tipo == "float"){
+				if(tipo1 == "int" && tipo2 == "float"){
 
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label1 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " + " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label2 + " + " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
+				}else if(tipo1 == "float" && tipo2 == "int"){
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label2 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " + " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label1 + " + " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
+				}else if((tipo1 == "int" && tipo2 == "int") || (tipo1 == "float" && tipo2 == "float") ){
 					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " + " + $3.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + label1 + " + " + label2 + ";\n";
 				}
 				else {
 					yyerror("Operacao de soma nao contemplada pelo compilador");
@@ -377,6 +403,9 @@ E 			: E '+' E
 				$$.label = generateVar();
 				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
 			}
+
+			| INCREMENTOS
+
 			| TK_INT
 			{
 				$$.label = generateVar();
@@ -422,17 +451,58 @@ E 			: E '+' E
 					$$.tipo = id->tipo;
 					$$.label = $1.label;
 				}
-				/*if(varMap.find($1.label) != varMap.end()) {
-        			$$.tipo = varMap[$1.label].tipo;
-        			$$.label = varMap[$1.label].label;
-				}*/
 				else {
 				$$.label = generateVar();
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
 				}
 			}
+
 			
 			
+			;
+
+INCREMENTOS	: TK_ID SINAL_DUPL {
+
+				atributos *id = findVar($1.label);
+				if ( id == nullptr ) yyerror("Variavel " + $1.label + " nao declarada para ser incrementada");
+
+				if(id->tipo != "int") yyerror("Variavel " + $1.label + " nao pode ser incrementada (tipo diferente de int)");
+
+				string var1 = generateVar();
+				string var2 = generateVar();
+
+				varDeclar += "int " + var1 + ";\n\t";
+				varDeclar += "int " + var2 + ";\n\t";
+
+				$$.label = var2;
+				$$.tipo = id->tipo;
+				$$.traducao = "\t" + var2 + " = " + id->label + ";\n\t" + var1 + " = 1;\n\t" + 
+								id->label + " = " + id->label + $2.label + var1 + ";\n";
+			}
+			| SINAL_DUPL TK_ID {
+
+				atributos *id = findVar($2.label);
+				if ( id == nullptr ) yyerror("Variavel " + $2.label + " nao declarada para ser incrementada");
+
+				if( id->tipo != "int" ) yyerror("Variavel " + $2.label + " nao pode ser incrementada (tipo diferente de int)");
+
+				string var = generateVar();
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.label = id->label;
+				$$.tipo = id->tipo;
+				$$.traducao = "\t" + var + " = 1;\n\t" + $$.label + " = " + $$.label + " + " + var + ";\n";
+
+			}
+			;
+SINAL_DUPL	: TK_2MAIS {
+				$$.label = " + ";
+				$$.traducao = "";
+			}
+			| TK_2MENOS {
+				$$.label = " - ";
+				$$.traducao = "";
+			}
 			;
 CONTROLE	: TK_IF E TK_DOTS BLOCO
 			{
@@ -567,17 +637,17 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 			}
 			| TK_ID TK_ATRIB E ';'
 			{
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				
-				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
+	
+				atributos* atr;
+				if ( atr = findVar($1.label) ) {
+					cout << $3.tipo << endl;
+					if(atr->tipo == $3.tipo) {
+						$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
 					}
-					else {
-						yyerror("Tipos nao compativeis");
-					}
+					else yyerror("atr de tipos incompativeis");
 				}
 				else {
+					std::map<string, atributos> *mapLocal = &varMap.back();
 					$$.label = $3.label;
 					$$.tipo = $3.tipo;
 					$$.traducao = $3.traducao;
@@ -603,6 +673,20 @@ LOOP 		: TK_WHILE E TK_DOTS BLOCO
 					$4.traducao +
 					"\tgoto " + loop->inicio + ";\n\t" + loop->fim + ":\n";
 				
+			}
+
+			| TK_DO BLOCO TK_WHILE E ';' {
+
+				if ($4.tipo != "unsigned char") yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
+
+				loopLabel* loop = getLoop();
+
+				$$.traducao = "\t" + loop->inicio + ":\n\t" 
+						+ loop->progressao + ":\n" + $4.traducao 
+						+ $2.traducao + "\tif (" 
+						+ $4.label + ") goto " + loop->inicio + ";\n\t"
+						+ loop->fim + ":\n";
+
 			}
 
 

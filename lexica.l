@@ -43,6 +43,9 @@ ID {LETRA}({LETRA}|{INT})*
 
 "%"			{return TK_MOD;}
 
+"++"		{return TK_2MAIS;}
+"--"		{return TK_2MENOS;}
+
 "!"			{ return TK_NOT;}
 "&&"		{ return TK_AND;}
 "||" 		{ return TK_OR;}
