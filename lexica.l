@@ -13,6 +13,7 @@ INT {DIGITO}+
 FLOAT {INT}+("."{INT}+)?
 CHAR \'({LETRA}|{INT})\'
 ID {LETRA}({LETRA}|{INT})*
+STRING \"([^\"\n]|\\\")*\"
 
 %%
 
@@ -31,6 +32,16 @@ ID {LETRA}({LETRA}|{INT})*
 "do"		{return TK_DO;}
 
 "while"		{return TK_WHILE;}
+
+"break"		{return TK_BREAK;}
+
+"continue"	{return TK_CONTINUE;}
+
+"all"		{return TK_ALL;}
+
+"print"		{return TK_PRINT;}
+
+"string"	{return TK_TIPO_STR;}
 
 "int"		{return TK_TIPO_INT;}
 
@@ -67,6 +78,7 @@ ID {LETRA}({LETRA}|{INT})*
 {BOOL}		{ yylval.label = yytext; return TK_BOOL; }
 {CHAR}		{ yylval.label = yytext; return TK_CHAR;}
 {ID}		{ yylval.label = yytext; return TK_ID; }
+{STRING}	{ yylval.label = yytext; return TK_STR;}
 
 .			{ *yytext; }
 

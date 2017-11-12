@@ -49,33 +49,39 @@ extern int yydebug;
     TK_FLOAT = 259,
     TK_BOOL = 260,
     TK_CHAR = 261,
-    TK_IF = 262,
-    TK_ELSE = 263,
-    TK_FOR = 264,
-    TK_DO = 265,
-    TK_WHILE = 266,
-    TK_MAIN = 267,
-    TK_ID = 268,
-    TK_TIPO_INT = 269,
-    TK_TIPO_FLOAT = 270,
-    TK_TIPO_BOOL = 271,
-    TK_TIPO_CHAR = 272,
-    TK_DOTS = 273,
-    TK_2MAIS = 274,
-    TK_2MENOS = 275,
-    TK_FIM = 276,
-    TK_ERROR = 277,
-    TK_ATRIB = 278,
-    TK_OR = 279,
-    TK_AND = 280,
-    TK_NOT = 281,
-    TK_IGUAL = 282,
-    TK_DIFERENTE = 283,
-    TK_MAIOR = 284,
-    TK_MENOR = 285,
-    TK_MAIORI = 286,
-    TK_MENORI = 287,
-    TK_MOD = 288
+    TK_STR = 262,
+    TK_IF = 263,
+    TK_ELSE = 264,
+    TK_FOR = 265,
+    TK_DO = 266,
+    TK_WHILE = 267,
+    TK_BREAK = 268,
+    TK_ALL = 269,
+    TK_CONTINUE = 270,
+    TK_PRINT = 271,
+    TK_MAIN = 272,
+    TK_ID = 273,
+    TK_TIPO_INT = 274,
+    TK_TIPO_FLOAT = 275,
+    TK_TIPO_BOOL = 276,
+    TK_TIPO_CHAR = 277,
+    TK_TIPO_STR = 278,
+    TK_DOTS = 279,
+    TK_2MAIS = 280,
+    TK_2MENOS = 281,
+    TK_FIM = 282,
+    TK_ERROR = 283,
+    TK_ATRIB = 284,
+    TK_OR = 285,
+    TK_AND = 286,
+    TK_NOT = 287,
+    TK_IGUAL = 288,
+    TK_DIFERENTE = 289,
+    TK_MAIOR = 290,
+    TK_MENOR = 291,
+    TK_MAIORI = 292,
+    TK_MENORI = 293,
+    TK_MOD = 294
   };
 #endif
 /* Tokens.  */
@@ -83,33 +89,39 @@ extern int yydebug;
 #define TK_FLOAT 259
 #define TK_BOOL 260
 #define TK_CHAR 261
-#define TK_IF 262
-#define TK_ELSE 263
-#define TK_FOR 264
-#define TK_DO 265
-#define TK_WHILE 266
-#define TK_MAIN 267
-#define TK_ID 268
-#define TK_TIPO_INT 269
-#define TK_TIPO_FLOAT 270
-#define TK_TIPO_BOOL 271
-#define TK_TIPO_CHAR 272
-#define TK_DOTS 273
-#define TK_2MAIS 274
-#define TK_2MENOS 275
-#define TK_FIM 276
-#define TK_ERROR 277
-#define TK_ATRIB 278
-#define TK_OR 279
-#define TK_AND 280
-#define TK_NOT 281
-#define TK_IGUAL 282
-#define TK_DIFERENTE 283
-#define TK_MAIOR 284
-#define TK_MENOR 285
-#define TK_MAIORI 286
-#define TK_MENORI 287
-#define TK_MOD 288
+#define TK_STR 262
+#define TK_IF 263
+#define TK_ELSE 264
+#define TK_FOR 265
+#define TK_DO 266
+#define TK_WHILE 267
+#define TK_BREAK 268
+#define TK_ALL 269
+#define TK_CONTINUE 270
+#define TK_PRINT 271
+#define TK_MAIN 272
+#define TK_ID 273
+#define TK_TIPO_INT 274
+#define TK_TIPO_FLOAT 275
+#define TK_TIPO_BOOL 276
+#define TK_TIPO_CHAR 277
+#define TK_TIPO_STR 278
+#define TK_DOTS 279
+#define TK_2MAIS 280
+#define TK_2MENOS 281
+#define TK_FIM 282
+#define TK_ERROR 283
+#define TK_ATRIB 284
+#define TK_OR 285
+#define TK_AND 286
+#define TK_NOT 287
+#define TK_IGUAL 288
+#define TK_DIFERENTE 289
+#define TK_MAIOR 290
+#define TK_MENOR 291
+#define TK_MAIORI 292
+#define TK_MENORI 293
+#define TK_MOD 294
 
 /* Value type.  */
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED

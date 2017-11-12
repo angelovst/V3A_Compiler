@@ -9,6 +9,10 @@
 
 using namespace std;
 
+void oi() {
+	cout << "oi" << endl;
+}
+
 string generateVar() {
 
 	static unsigned int i = 1;
@@ -51,7 +55,7 @@ void empLoop();
 
 void desempLoop();
 
-loopLabel* getLoop();
+loopLabel* getLoop(int tamLoop);
 
 loopLabel* getOuterLoop();
 
@@ -69,8 +73,9 @@ string varDeclar;
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_DOTS TK_2MAIS TK_2MENOS
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_STR
+%token TK_DOTS TK_2MAIS TK_2MENOS
 %token TK_FIM TK_ERROR
 
 %start S
@@ -142,10 +147,28 @@ COMANDOS	: COMANDO COMANDOS
 			;
 
 COMANDO 	: E ';'
+			{
+				$$.traducao = $1.traducao;
+			}
 
-			| ATRIBUICAO
+			| ATRIBUICAO ';'
+			{
+				$$.traducao = $1.traducao;
+			}
 			
 			| CONTROLE
+			{
+				$$.traducao = $1.traducao;
+			}
+
+			| LOOP_ALT ';'
+			{
+				$$.traducao = $1.traducao;
+			}
+			| PRINT ';'
+			{
+				$$.traducao = $1.traducao + " << endl;\n";
+			}
 
 			;
 
@@ -213,37 +236,61 @@ E 			: E '+' E
 			}
 			| E '*' E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 
 				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
+				if(tipo1 == "int" && tipo2 == "float"){
 
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label1 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " * " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label2 + " * " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
+				}else if(tipo1 == "float" && tipo2 == "int"){
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label2 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " * " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label1 + " * " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
+				}else if((tipo1 == "int" && tipo2 == "int") || (tipo1 == "float" && tipo2 == "float") ){
 					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " * " + $3.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + label1 + " * " + label2 + ";\n";
 				}
 				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
+					yyerror("Operacao de mult nao contemplada pelo compilador");
 				}
 
 
@@ -251,37 +298,61 @@ E 			: E '+' E
 			}
 			| E '/' E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 
 				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
+				if(tipo1 == "int" && tipo2 == "float"){
 
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label1 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " / " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label2 + " / " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
+				}else if(tipo1 == "float" && tipo2 == "int"){
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label2 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " / " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label1 + " / " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
+				}else if((tipo1 == "int" && tipo2 == "int") || (tipo1 == "float" && tipo2 == "float") ){
 					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " / " + $3.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + label1 + " / " + label2 + ";\n";
 				}
 				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
+					yyerror("Operacao de div nao contemplada pelo compilador");
 				}
 
 
@@ -289,37 +360,61 @@ E 			: E '+' E
 			}
 			| E '-' E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 
 				$$.label = generateVar();
 				$$.traducao = $1.traducao + $3.traducao;
 				string aux;
+				if(tipo1 == "int" && tipo2 == "float"){
 
-				if($1.tipo == "int" && $3.tipo == "float"){
-
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $1.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label1 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $3.label + " - " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label2 + " - " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 
 				
-				}else if($1.tipo == "float" && $3.tipo == "int"){
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + $3.label + ";\n";
+				}else if(tipo1 == "float" && tipo2 == "int"){
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + "(float)" + label2 + ";\n";
 					aux = generateVar();
 					varDeclar += "float " + $$.label + ";\n\t";
 					varDeclar += "float " + aux + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + aux + " = " + $1.label + " - " + $$.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + aux + " = " + label1 + " - " + $$.label + ";\n";
 					$$.label = aux;
 					$$.tipo = "float";
 				
-				}else if(($1.tipo == "int" && $3.tipo == "int") || ($1.tipo == "float" && $3.tipo == "float") ){
+				}else if((tipo1 == "int" && tipo2 == "int") || (tipo1 == "float" && tipo2 == "float") ){
 					varDeclar += "int " + $$.label + ";\n\t";
-					$$.traducao = $$.traducao + "\t" + $$.label + " = " + $1.label + " - " + $3.label + ";\n";
+					$$.traducao = $$.traducao + "\t" + $$.label + " = " + label1 + " - " + label2 + ";\n";
 				}
 				else {
-					yyerror("Operacao de soma nao contemplada pelo compilador");
+					yyerror("Operacao de sub nao contemplada pelo compilador");
 				}
 
 
@@ -443,6 +538,13 @@ E 			: E '+' E
 				varDeclar += "char " + $$.label + ";\n\t";
 				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
 				$$.tipo = "char";
+			}
+			| TK_STR
+			{
+				$$.label = generateVar();
+				varDeclar += "str " + $$.label + ";\n\t";
+				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
+				$$.tipo = "str";
 			}
 			| TK_ID
 			{
@@ -593,7 +695,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 			;
 
 
-ATRIBUICAO 	: TIPO TK_ID ';'
+ATRIBUICAO 	: TIPO TK_ID
 			{
 				std::map<string, atributos> *mapLocal = &varMap.back();
 
@@ -610,7 +712,7 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 
 			}
 
-			| TIPO TK_ID TK_ATRIB E ';'
+			| TIPO TK_ID TK_ATRIB E
 			{	
 				std::map<string, atributos> *mapLocal = &varMap.back();
 				if(mapLocal->find($2.label) != mapLocal->end()) {
@@ -635,12 +737,10 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 					yyerror("Atribuicao de tipos nao compativeis");
 				}
 			}
-			| TK_ID TK_ATRIB E ';'
+			| TK_ID TK_ATRIB E
 			{
-	
 				atributos* atr;
 				if ( atr = findVar($1.label) ) {
-					cout << $3.tipo << endl;
 					if(atr->tipo == $3.tipo) {
 						$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
 					}
@@ -657,12 +757,29 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 			}
 			;
 
-LOOP 		: TK_WHILE E TK_DOTS BLOCO 
+LOOP 		: TK_FOR ATRIBUICAO ';' E ';' INCREMENTOS TK_DOTS BLOCO {
+				if ($4.tipo != "unsigned char") yyerror("Tipo da expressao do for DEVE ser bool");
+
+				string var = generateVar();
+				loopLabel* loop = getLoop(1);
+
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.traducao = $2.traducao + "\n\t" + loop->inicio + ":\n" + $4.traducao + 
+						"\t" + var + " = !" + $4.label + ";\n" +
+						"\tif (" + var + ") goto " + loop->fim + ";\n\n" +
+						$8.traducao + "\t" + loop->progressao + ":\n\n" + $6.traducao +
+						"\tgoto " + loop->inicio + ";\n\n\t" + 
+						loop->fim + ":\n";
+
+			}
+
+			|TK_WHILE E TK_DOTS BLOCO 
 			{
 				if ($2.tipo != "unsigned char") yyerror("Tipo da expressao do while DEVE ser bool");
 
 				string var = generateVar();
-				loopLabel* loop = getLoop();
+				loopLabel* loop = getLoop(1);
 					
 				varDeclar += "int " + var + ";\n\t";
 					
@@ -679,7 +796,7 @@ LOOP 		: TK_WHILE E TK_DOTS BLOCO
 
 				if ($4.tipo != "unsigned char") yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
 
-				loopLabel* loop = getLoop();
+				loopLabel* loop = getLoop(1);
 
 				$$.traducao = "\t" + loop->inicio + ":\n\t" 
 						+ loop->progressao + ":\n" + $4.traducao 
@@ -689,6 +806,63 @@ LOOP 		: TK_WHILE E TK_DOTS BLOCO
 
 			}
 
+			;
+LOOP_ALT	: TK_BREAK {
+				loopLabel* loop = getLoop(1);
+				
+				if (loop == nullptr) yyerror("Break deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+				
+			}
+			| TK_BREAK TK_ALL {
+				loopLabel* loop = getOuterLoop();
+				
+				if (loop == nullptr) yyerror("Break all deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+			}
+			| TK_BREAK '(' TK_INT ')' {
+				loopLabel* loop = getLoop(stoi($3.label));
+				
+				if (loop == nullptr) yyerror("Break com args deve ser usado dentro de um loop\nou\nargumento invalido");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+			}
+			| TK_CONTINUE {
+				loopLabel* loop = getLoop(1);
+				
+				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+			}
+			| TK_CONTINUE TK_ALL {
+				loopLabel* loop = getOuterLoop();
+				
+				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+			}
+			;
+
+PRINT		: TK_PRINT PRINT_ALT
+			{
+				$$.traducao = $2.traducao + "\tcout" + $2.label;
+			}
+			;
+PRINT_ALT	: E
+			{
+				$$.traducao = $1.traducao;
+				$$.label = " << " + $1.label;
+			}
+
+			| E ',' PRINT_ALT
+			{
+				$$.traducao = $1.traducao + $3.traducao;
+				$$.label = " << " + $1.label + $3.label;
+			}
+
+			;
 
 TIPO 		: TK_TIPO_INT
 			{
@@ -705,6 +879,9 @@ TIPO 		: TK_TIPO_INT
 			| TK_TIPO_CHAR
 			{
 				$$.tipo = "char";
+			}
+			| TK_TIPO_STR {
+				$$.tipo = "str";
 			}
 
 			;
@@ -753,9 +930,10 @@ void desempLoop() {
 	return loopMap.pop_back();
 }
 
-loopLabel* getLoop() {
-	if (loopMap.size()) {
-		return &loopMap[loopMap.size() - 1];
+loopLabel* getLoop(int tamLoop) {
+	if (loopMap.size() && tamLoop <= loopMap.size() && tamLoop > 0) {
+		cout << loopMap.size() << " " << tamLoop << endl;
+		return &loopMap[loopMap.size() - tamLoop];
 	} else {
 		return nullptr;
 	}

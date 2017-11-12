@@ -1,13 +1,6 @@
 main()
 {	
-	int oi;
-	int a;
-	int b;
-
-	b = oi++;
-
-
-
+	print 1 + 1, 4;
 
 
 }
