@@ -1,0 +1,14 @@
+main() {
+
+	while true: {
+
+		while true: {
+
+			while true: {
+
+				break(2);
+			}
+			break;
+		}
+	}
+}

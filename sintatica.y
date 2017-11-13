@@ -5,13 +5,9 @@
 #include <map>
 #include <vector>
 #include <algorithm>
-#define YYSTYPE atributos	
+#define YYSTYPE atributos
 
 using namespace std;
-
-void oi() {
-	cout << "oi" << endl;
-}
 
 string generateVar() {
 
@@ -30,6 +26,7 @@ typedef struct atributos {
 	string label;
 	string traducao;
 	string tipo;
+	string tamanho;
 }atributos;
 
 typedef struct loopLabel {
@@ -436,8 +433,33 @@ E 			: E '+' E
 			}
 			| E TK_IGUAL E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 				$$.label = generateVar();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " == " + $3.label + ";\n";
+				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + label1 + " == " + label2 + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
@@ -460,8 +482,33 @@ E 			: E '+' E
 
 			| E TK_MENOR E
 			{
+				atributos *id1 = findVar($1.label);
+				atributos *id2 = findVar($3.label);
+				string label1;
+				string label2;
+				string tipo1;
+				string tipo2;
+
+				if(id1 != nullptr) {
+					label1 = id1->label;
+					tipo1 = id1->tipo;
+				}
+				else {
+					label1 = $1.label;
+					tipo1 = $1.tipo;
+				}
+
+				if(id2 != nullptr) {
+					label2 = id2->label;
+					tipo2 = id2->tipo;
+				}
+				else {
+					label2 = $3.label;
+					tipo2 = $3.tipo;
+				}
+
 				$$.label = generateVar();
-				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + $1.label + " < " + $3.label + ";\n";
+				$$.traducao = $1.traducao + $3.traducao + "\t" + $$.label + " = " + label1 + " < " + label2 + ";\n";
 				$$.tipo = "unsigned char";
 				varDeclar += "unsigned char " + $$.label + ";\n\t";
 			}
@@ -541,10 +588,11 @@ E 			: E '+' E
 			}
 			| TK_STR
 			{
+				$$.tamanho = to_string($1.label.size() - 1);
 				$$.label = generateVar();
-				varDeclar += "str " + $$.label + ";\n\t";
-				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
-				$$.tipo = "str";
+				varDeclar += "char[" + $$.tamanho + "] " + $$.label + ";\n\t";
+				$$.traducao = "\tstrcpy(" + $$.label + ", " + $1.label + ");\n";
+				$$.tipo = "char ";
 			}
 			| TK_ID
 			{
@@ -702,6 +750,12 @@ ATRIBUICAO 	: TIPO TK_ID
 				if(mapLocal->find($2.label) != mapLocal->end()) {
 					yyerror("Variavel ja declarada localmente");
 				}
+				else if ( $1.tipo == "char ") {
+					$$.label = generateVar();
+					$$.tipo = $1.tipo;
+					varDeclar += $1.traducao + $2.traducao + $$.tipo + $$.label + "[200];\n\t";
+					(*mapLocal)[$2.label] = $$;
+				}
 				else {
 					$$.label = generateVar();
 					$$.tipo = $1.tipo;
@@ -742,7 +796,24 @@ ATRIBUICAO 	: TIPO TK_ID
 				atributos* atr;
 				if ( atr = findVar($1.label) ) {
 					if(atr->tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
+						if($3.tipo == "char ") {
+							if($3.tamanho <= atr->tamanho ) {								
+								$$.traducao = $3.traducao + "\t" + "strcpy(" + atr->label + ", " + $3.label + ");\n";
+							}
+							else {
+								
+								string var = generateVar();
+								varDeclar += "char[" + $3.tamanho + "] " + var + ";\n\t";
+								
+								atr->label = var;
+
+								$$.traducao = $3.traducao + "\t" + "strcpy(" + atr->label + ", " + $3.label + ");\n";;
+
+							}
+						}
+						else { 
+							$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
+						}
 					}
 					else yyerror("atr de tipos incompativeis");
 				}
@@ -751,6 +822,7 @@ ATRIBUICAO 	: TIPO TK_ID
 					$$.label = $3.label;
 					$$.tipo = $3.tipo;
 					$$.traducao = $3.traducao;
+					$$.tamanho = $3.tamanho;
 					(*mapLocal)[$1.label] = $$;
 
 				}
@@ -852,14 +924,22 @@ PRINT		: TK_PRINT PRINT_ALT
 			;
 PRINT_ALT	: E
 			{
+				string label;
+				atributos* atr;
+				if ( atr = findVar($1.label) ) label = atr->label;
+				else label = $1.label;
 				$$.traducao = $1.traducao;
-				$$.label = " << " + $1.label;
+				$$.label = " << " + label;
 			}
 
 			| E ',' PRINT_ALT
 			{
+				string label;
+				atributos* atr;
+				if ( atr = findVar($1.label) ) label = atr->label;
+				else label = $1.label;
 				$$.traducao = $1.traducao + $3.traducao;
-				$$.label = " << " + $1.label + $3.label;
+				$$.label = " << " + label + $3.label;
 			}
 
 			;
@@ -880,8 +960,9 @@ TIPO 		: TK_TIPO_INT
 			{
 				$$.tipo = "char";
 			}
-			| TK_TIPO_STR {
-				$$.tipo = "str";
+			| TK_TIPO_STR
+			{
+				$$.tipo = "char ";
 			}
 
 			;
@@ -932,7 +1013,7 @@ void desempLoop() {
 
 loopLabel* getLoop(int tamLoop) {
 	if (loopMap.size() && tamLoop <= loopMap.size() && tamLoop > 0) {
-		cout << loopMap.size() << " " << tamLoop << endl;
+		//cout << loopMap.size() << " " << tamLoop << endl;
 		return &loopMap[loopMap.size() - tamLoop];
 	} else {
 		return nullptr;

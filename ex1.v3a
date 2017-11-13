@@ -1,0 +1,14 @@
+main() {
+
+	int a = 2;
+	int b = 3;
+	if a > b : {
+		print a,">",b;
+	}
+	else if b < a :{
+		print b,">",a;
+	}
+	else: {
+		print b, "=", a;
+	}
+}
