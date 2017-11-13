@@ -52,7 +52,7 @@ void desempContexto();
 //LOOP
 void empLoop();
 void desempLoop();
-loopLabel* getLoop();
+loopLabel* getLoop(int tamLoop);
 loopLabel* getOuterLoop();
 std::string generateLabel (void);
 

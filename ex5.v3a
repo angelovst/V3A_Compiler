@@ -1,0 +1,13 @@
+main()
+{	
+
+	a = "sa";
+
+	print a;
+
+	a = "asds";
+
+	print a;
+
+
+}

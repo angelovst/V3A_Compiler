@@ -30,7 +30,7 @@ typedef struct {
 std::string generateNodeLabel (void);
 std::string no_getData (std::string &label);
 std::string no_getMemberAccess (std::string &label);
-std::string no_setAccessDado (std::string &label);
+std::string no_setAccessDado (std::string &label, std::string &accessVar);
 std::string no_setAccessAnterior (std::string &label);
 std::string no_setAccessProximo (std::string &label);
 

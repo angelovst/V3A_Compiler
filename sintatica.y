@@ -15,8 +15,10 @@ int yyparse();
 
 %}
 
-%token TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST;
-%token TK_MAIN TK_ID TK_IF TK_ELSE TK_FOR TK_DO TK_WHILE TK_DOTS
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
+%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
+%token TK_DOTS TK_2MAIS TK_2MENOS
 %token TK_FIM TK_ERROR
 
 %start S
@@ -27,6 +29,7 @@ int yyparse();
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
 %left TK_PLUS TK_MINUS
 %left TK_MULT TK_DIV TK_MOD
+%right TK_2MAIS TK_2MENOS
 
 %%
 
@@ -37,7 +40,7 @@ S 			: TK_MAIN '(' ')' MAIN
 			}
 			;
 
-MAIN		: '{' COMANDOS '}'
+MAIN		: TK_BLOCO_ABRIR COMANDOS TK_BLOCO_FECHAR
 			{
 				$$.traducao = $2.traducao;
 			}
@@ -76,7 +79,7 @@ LOOP_FIM	:	{
 				$$.label = "";
 			};
 
-BLOCO		: ESCOPO_INICIO '{' COMANDOS '}' ESCOPO_FIM {
+BLOCO		: ESCOPO_INICIO TK_BLOCO_ABRIR COMANDOS TK_BLOCO_FECHAR ESCOPO_FIM {
 				$$.traducao = $3.traducao;
 			};
 
@@ -89,11 +92,25 @@ COMANDOS	: COMANDO COMANDOS
 			;
 
 COMANDO 	: E ';'
-			
-			| ATRIBUICAO
+
+			| ATRIBUICAO ';'
+			{
+				$$.traducao = $1.traducao;
+			}
 			
 			| CONTROLE
+			{
+				$$.traducao = $1.traducao;
+			}
 
+			| LOOP_ALT ';'
+			{
+				$$.traducao = $1.traducao;
+			}
+			| PRINT ';'
+			{
+				$$.traducao = $1.traducao + " << endl;\n";
+			}
 			;
 
 E 			: E OP_INFIX E {
@@ -136,6 +153,8 @@ E 			: E OP_INFIX E {
 				$$.label = generateVarLabel();
 				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
 			}
+			| INCREMENTOS
+
 			| TK_TIPO_INT
 			{
 				$$.label = generateVarLabel();
@@ -181,17 +200,11 @@ E 			: E OP_INFIX E {
 					$$.tipo = id->tipo;
 					$$.label = $1.label;
 				}
-				/*if(varMap.find($1.label) != varMap.end()) {
-        			$$.tipo = varMap[$1.label].tipo;
-        			$$.label = varMap[$1.label].label;
-				}*/
 				else {
 					$$.label = generateVarLabel();
 					$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
 				}
 			}
-			
-			
 			;
 			
 OP_INFIX	: TK_PLUS
@@ -246,6 +259,50 @@ OP_INFIX	: TK_PLUS
 			| TK_MENORI  {
 				$$.label = "<=";
 				$$.tipo = &tipo_inf_operator;
+			}
+			;
+
+INCREMENTOS	: TK_ID SINAL_DUPL {
+
+				atributos *id = findVar($1.label);
+				if ( id == nullptr ) yyerror("Variavel " + $1.label + " nao declarada para ser incrementada");
+
+				if(id->tipo != &tipo_int) yyerror("Variavel " + $1.label + " nao pode ser incrementada (tipo diferente de int)");
+
+				string var1 = generateVarLabel();
+				string var2 = generateVarLabel();
+
+				varDeclar += "int " + var1 + ";\n\t";
+				varDeclar += "int " + var2 + ";\n\t";
+
+				$$.label = var2;
+				$$.tipo = id->tipo;
+				$$.traducao = "\t" + var2 + " = " + id->label + ";\n\t" + var1 + " = 1;\n\t" + 
+								id->label + " = " + id->label + $2.label + var1 + ";\n";
+			}
+			| SINAL_DUPL TK_ID {
+
+				atributos *id = findVar($2.label);
+				if ( id == nullptr ) yyerror("Variavel " + $2.label + " nao declarada para ser incrementada");
+
+				if( id->tipo != &tipo_int ) yyerror("Variavel " + $2.label + " nao pode ser incrementada (tipo diferente de int)");
+
+				string var = generateVarLabel();
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.label = id->label;
+				$$.tipo = id->tipo;
+				$$.traducao = "\t" + var + " = 1;\n\t" + $$.label + " = " + $$.label + " + " + var + ";\n";
+
+			}
+			;
+SINAL_DUPL	: TK_2MAIS {
+				$$.label = " + ";
+				$$.traducao = "";
+			}
+			| TK_2MENOS {
+				$$.label = " - ";
+				$$.traducao = "";
 			}
 			;
 			
@@ -339,7 +396,7 @@ CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 			;
 
 
-ATRIBUICAO 	: TIPO TK_ID ';'
+ATRIBUICAO 	: TIPO TK_ID
 			{
 				std::map<string, atributos> *mapLocal = &varMap.back();
 
@@ -356,7 +413,7 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 
 			}
 
-			| TIPO TK_ID TK_ATRIB E ';'
+			| TIPO TK_ID TK_ATRIB E
 			{	
 				std::map<string, atributos> *mapLocal = &varMap.back();
 				if(mapLocal->find($2.label) != mapLocal->end()) {
@@ -371,29 +428,27 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 						(*mapLocal)[$2.label] = $$;
 					}
 					else {
-					$$.label = $4.label;
-					$$.traducao = $1.traducao + $2.traducao + $4.traducao;
-					$$.tipo = $1.tipo;
-					(*mapLocal)[$2.label] = $$;
+						$$.label = $4.label;
+						$$.traducao = $1.traducao + $2.traducao + $4.traducao;
+						$$.tipo = $1.tipo;
+						(*mapLocal)[$2.label] = $$;
 					}
 				}
 				else {
 					yyerror("Atribuicao de tipos nao compativeis");
 				}
 			}
-			| TK_ID TK_ATRIB E ';'
+			| TK_ID TK_ATRIB E
 			{
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				
-				if(mapLocal->find($1.label) != mapLocal->end()) {
-					if((*mapLocal)[$1.label].tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + (*mapLocal)[$1.label].label + " = " + $3.label + ";\n";
+				atributos* atr;
+				if ( atr = findVar($1.label) ) {
+					if(atr->tipo == $3.tipo) {
+						$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
 					}
-					else {
-						yyerror("Tipos nao compativeis");
-					}
+					else yyerror("atr de tipos incompativeis");
 				}
 				else {
+					std::map<string, atributos> *mapLocal = &varMap.back();
 					$$.label = $3.label;
 					$$.tipo = $3.tipo;
 					$$.traducao = $3.traducao;
@@ -403,12 +458,28 @@ ATRIBUICAO 	: TIPO TK_ID ';'
 			}
 			;
 
-LOOP 		: TK_WHILE E TK_DOTS BLOCO 
-			{
-				if ($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do while DEVE ser bool");
+LOOP 		: TK_FOR ATRIBUICAO ';' E ';' INCREMENTOS TK_DOTS BLOCO {
+				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do for DEVE ser bool");
 
 				string var = generateVarLabel();
-				loopLabel* loop = getLoop();
+				loopLabel* loop = getLoop(1);
+
+				varDeclar += "int " + var + ";\n\t";
+
+				$$.traducao = $2.traducao + "\n\t" + loop->inicio + ":\n" + $4.traducao + 
+						"\t" + var + " = !" + $4.label + ";\n" +
+						"\tif (" + var + ") goto " + loop->fim + ";\n\n" +
+						$8.traducao + "\t" + loop->progressao + ":\n\n" + $6.traducao +
+						"\tgoto " + loop->inicio + ";\n\n\t" + 
+						loop->fim + ":\n";
+
+			}
+
+			|TK_WHILE E TK_DOTS BLOCO 
+			{
+				if ($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do while DEVE ser bool");
+				string var = generateVarLabel();
+				loopLabel* loop = getLoop(1);
 					
 				varDeclar += "int " + var + ";\n\t";
 					
@@ -419,6 +490,84 @@ LOOP 		: TK_WHILE E TK_DOTS BLOCO
 					$4.traducao +
 					"\tgoto " + loop->inicio + ";\n\t" + loop->fim + ":\n";
 				
+			}
+
+			| TK_DO BLOCO TK_WHILE E ';' {
+
+				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
+
+				loopLabel* loop = getLoop(1);
+
+				$$.traducao = "\t" + loop->inicio + ":\n\t" 
+						+ loop->progressao + ":\n" + $4.traducao 
+						+ $2.traducao + "\tif (" 
+						+ $4.label + ") goto " + loop->inicio + ";\n\t"
+						+ loop->fim + ":\n";
+
+			}
+
+			;
+LOOP_ALT	: TK_BREAK {
+				loopLabel* loop = getLoop(1);
+				
+				if (loop == nullptr) yyerror("Break deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+				
+			}
+			| TK_BREAK TK_ALL {
+				loopLabel* loop = getOuterLoop();
+				
+				if (loop == nullptr) yyerror("Break all deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+			}
+			| TK_BREAK '(' TK_INT ')' {
+				loopLabel* loop = getLoop(stoi($3.label));
+				
+				if (loop == nullptr) yyerror("Break com args deve ser usado dentro de um loop\nou\nargumento invalido");
+
+				$$.traducao = "\tgoto " + loop->fim + ";\n";
+			}
+			| TK_CONTINUE {
+				loopLabel* loop = getLoop(1);
+				
+				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+			}
+			| TK_CONTINUE TK_ALL {
+				loopLabel* loop = getOuterLoop();
+				
+				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+
+				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+			}
+			;
+
+PRINT		: TK_PRINT PRINT_ALT
+			{
+				$$.traducao = $2.traducao + "\tcout" + $2.label;
+			}
+			;
+PRINT_ALT	: E
+			{
+				string label;
+				atributos* atr;
+				if ( atr = findVar($1.label) ) label = atr->label;
+				else label = $1.label;
+				$$.traducao = $1.traducao;
+				$$.label = " << " + label;
+			}
+
+			| E ',' PRINT_ALT
+			{
+				string label;
+				atributos* atr;
+				if ( atr = findVar($1.label) ) label = atr->label;
+				else label = $1.label;
+				$$.traducao = $1.traducao + $3.traducao;
+				$$.label = " << " + label + $3.label;
 			}
 			;
 
@@ -441,7 +590,7 @@ TIPO 		: TK_TIPO_INT
 			| TK_TIPO_LIST
 			{
 				$$.tipo = &tipo_list;
-			}	
+			}
 			;
 
 %%

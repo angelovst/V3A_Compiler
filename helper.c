@@ -112,9 +112,10 @@ void desempLoop() {
 	return loopMap.pop_back();
 }
 
-loopLabel* getLoop() {
-	if (loopMap.size()) {
-		return &loopMap[loopMap.size() - 1];
+loopLabel* getLoop(int tamLoop) {
+	if (loopMap.size() && tamLoop <= loopMap.size() && tamLoop > 0) {
+		//cout << loopMap.size() << " " << tamLoop << endl;
+		return &loopMap[loopMap.size() - tamLoop];
 	} else {
 		return nullptr;
 	}

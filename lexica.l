@@ -13,6 +13,7 @@ INT {DIGITO}+
 FLOAT {INT}+("."{INT}+)?
 CHAR \'({LETRA}|{INT})\'
 ID {LETRA}({LETRA}|{INT})*
+STRING \"([^\"\n]|\\\")*\"
 
 %%
 
@@ -20,20 +21,31 @@ ID {LETRA}({LETRA}|{INT})*
 
 {DELIM} 	{}
 
+"print"		{return TK_PRINT;}
+
 "int"		{return TK_TIPO_INT;}
 "float"		{return TK_TIPO_FLOAT;}
 "bool"		{return TK_TIPO_BOOL;}
 "char"		{return TK_TIPO_CHAR;}
 "list"		{return TK_TIPO_LIST;}
+"string"	{return TK_TIPO_STR;}
 
 "main"		{return TK_MAIN;}
+"{"			{return TK_BLOCO_ABRIR;}
+"}"			{return TK_BLOCO_FECHAR;}
 "if"		{return TK_IF;}
 "else"		{return TK_ELSE;}
 "for"		{return TK_FOR;}
 "do"		{return TK_DO;}
 "while"		{return TK_WHILE;}
+"break"		{return TK_BREAK;}
+"continue"	{return TK_CONTINUE;}
+"all"		{return TK_ALL;}
+
 
 "+"			{return TK_PLUS;}
+"++"		{return TK_2MAIS;}
+"--"		{return TK_2MENOS;}
 "-"			{return TK_MINUS;}
 "*"			{return TK_MULT;}
 "/"			{return TK_DIV;}
@@ -45,6 +57,13 @@ ID {LETRA}({LETRA}|{INT})*
 "~="		{ return TK_DIFERENTE;}
 "<-"		{ return TK_ATRIB;}
 "="			{ return TK_IGUAL;}
+
+"!"			{ return TK_NOT;}
+"&&"		{ return TK_AND;}
+"||" 		{ return TK_OR;}
+"!="		{ return TK_DIFERENTE;}
+"="			{ return TK_ATRIB;}
+"=="		{ return TK_IGUAL;}
 ">" 		{ return TK_MAIOR;}
 "<"			{ return TK_MENOR;}
 ">="		{ return TK_MAIORI;}
@@ -58,6 +77,7 @@ ID {LETRA}({LETRA}|{INT})*
 {BOOL}		{ yylval.label = yytext; return TK_TIPO_BOOL; }
 {CHAR}		{ yylval.label = yytext; return TK_TIPO_CHAR;}
 {ID}		{ yylval.label = yytext; return TK_ID; }
+{STRING}	{ yylval.label = yytext; return TK_STR;}
 
 .			{ *yytext; }
 
