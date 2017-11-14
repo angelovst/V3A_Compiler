@@ -36,7 +36,7 @@ int yyparse();
 S 			: COMANDOS ESCOPO_FIM
 			{
 				cout << "Regra S : COMANDOS ESCOPO_FIM" << endl;	//debug
-				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << $1.traducao << "\n\treturn 0;\n}" << endl;
+				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -46,7 +46,7 @@ BLOCO	: TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM
 				cout << "Regra BLOCO : TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM" << endl;	//debug
 				empContexto();
 				
-				$$.traducao = newLine("{\n" + $3.traducao + $2.traducao + "}");
+				$$.traducao = "{\n" + $3.traducao + "\n" + $2.traducao + "}";
 				$$.label = "";
 			}
 			;
@@ -102,7 +102,7 @@ COMANDOS	: COMANDO COMANDOS
 
 COMANDO 	: E TK_ENDL
 			{
-				cout << "Regra COMANDO : E TK_ENDL" << endl;
+				cout << "Regra COMANDO : " << $1.label << endl;
 			}
 
 			| DECLARACAO TK_ENDL
@@ -133,25 +133,27 @@ COMANDO 	: E TK_ENDL
 				cout << "Regra COMANDO : PRINT TK_ENDL" << endl;
 				$$.traducao = $1.traducao + " << endl;\n";
 			}
+			| TK_ENDL
 			;
 
 E 			: E OP_INFIX E {
-				cout << "Regra E : E OP_INFIX E" << endl;	//debug
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
 				void *args[4];
 				string traducao;
 				
 				$$.label = generateVarLabel();	//retorno
 				if ($2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
-					declararLocal(resolverTipo($1.tipo, $3.tipo), $$.label);
+					$$.tipo = resolverTipo($1.tipo, $3.tipo);
 				} else {
-					declararLocal((*$2.tipo->retornos)[0], $$.label);
+					$$.tipo = (*$2.tipo->retornos)[0];
 				}
+				declararLocal($$.tipo, $$.label);
 				$$.traducao = $1.traducao + $3.traducao;
 				
 				args[0] = &$1;
 				args[1] = &$3;
 				args[2] = &$$.label;
-				args[3] = &$2.tipo->label;
+				args[3] = &$2.label;
 				
 				traducao = $2.tipo->traducaoParcial((void*)args);
 				if (traducao == INVALID_CAST) {
@@ -194,7 +196,7 @@ E 			: E OP_INFIX E {
 
 			| TK_INT
 			{
-				cout << "Regra E : TK_INT" << endl;	//debug
+				cout << "Regra E : " << $1.label << endl;	//debug
 				$$.label = generateVarLabel();
 				declararLocal(&tipo_int, $$.label);
 				$$.traducao = newLine($$.label + " = " + $1.label);
@@ -236,7 +238,7 @@ E 			: E OP_INFIX E {
 			}
 			| TK_ID
 			{
-				cout << "Regra E : TK_ID" << endl;	//debug
+				cout << "Regra E : " << $1.label << endl;	//debug
 				$$.tipo = findVar($1.label);
 				$$.label = $1.label;
 				$$.traducao = "";

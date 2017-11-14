@@ -70,7 +70,7 @@ Tipo* resolverTipo (Tipo *a, Tipo *b) {
 		return b;
 	} else if (b == NULL) {
 		return a;
-	} else if (a->subset - b->subset < 0) {	//b e o tipo do retorno
+	} else if (a->subset < b->subset) {	//b e o tipo do retorno
 		return b;
 	}
 	return a;	//a e o tipo do retorno
@@ -181,6 +181,7 @@ string traducaoAtribuicao (void *args) {
 	lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
 	if (lvalue->tipo == NULL) {
+		cout << rvalue->tipo->label << endl;
 		if (!declararLocal(rvalue->tipo, lvalue->label)) {
 			return VAR_ALREADY_DECLARED;
 		}
