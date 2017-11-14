@@ -1,23 +1,24 @@
 %{
 #include <string>
+#include "helper.h"
 
 %}
 
 ESPACO [ \t]
 DIGITO [0-9]
-LETRA [A-Za-z_]
+LETRA [A-Za-z]
 
 BOOL ("false"|"true")
 DELIM {ESPACO}+
 INT {DIGITO}+
 FLOAT {INT}+("."{INT}+)?
-CHAR \'({LETRA}|{INT})\'
+CHAR \'({LETRA}|{DIGITO})\'
 ID {LETRA}({LETRA}|{INT})*
-STRING \"([^\"\n]|\\\")*\"
 
 %%
 
-"\n"		{}
+"\n"		{ line++; return TK_ENDL; }
+";"			{ return TK_ENDL; }
 
 {DELIM} 	{}
 
@@ -28,7 +29,6 @@ STRING \"([^\"\n]|\\\")*\"
 "bool"		{return TK_TIPO_BOOL;}
 "char"		{return TK_TIPO_CHAR;}
 "list"		{return TK_TIPO_LIST;}
-"string"	{return TK_TIPO_STR;}
 
 "main"		{return TK_MAIN;}
 "{"			{return TK_BLOCO_ABRIR;}
@@ -50,20 +50,14 @@ STRING \"([^\"\n]|\\\")*\"
 "*"			{return TK_MULT;}
 "/"			{return TK_DIV;}
 "%"			{return TK_MOD;}
+"<-"		{ return TK_ATRIB;}
 
 "~"			{ return TK_NOT;}
 "and"		{ return TK_AND;}
 "or" 		{ return TK_OR;}
 "~="		{ return TK_DIFERENTE;}
-"<-"		{ return TK_ATRIB;}
 "="			{ return TK_IGUAL;}
 
-"!"			{ return TK_NOT;}
-"&&"		{ return TK_AND;}
-"||" 		{ return TK_OR;}
-"!="		{ return TK_DIFERENTE;}
-"="			{ return TK_ATRIB;}
-"=="		{ return TK_IGUAL;}
 ">" 		{ return TK_MAIOR;}
 "<"			{ return TK_MENOR;}
 ">="		{ return TK_MAIORI;}
@@ -72,12 +66,11 @@ STRING \"([^\"\n]|\\\")*\"
 
 [(){}[\];,]	{ return *yytext; }
 
-{INT}		{ yylval.label = yytext; return TK_TIPO_INT; }
-{FLOAT}		{ yylval.label = yytext; return TK_TIPO_FLOAT; }
-{BOOL}		{ yylval.label = yytext; return TK_TIPO_BOOL; }
-{CHAR}		{ yylval.label = yytext; return TK_TIPO_CHAR;}
+{INT}		{ yylval.label = yytext; return TK_INT; }
+{FLOAT}		{ yylval.label = yytext; return TK_FLOAT; }
+{BOOL}		{ yylval.label = yytext; return TK_BOOL; }
+{CHAR}		{ yylval.label = yytext; return TK_CHAR;}
 {ID}		{ yylval.label = yytext; return TK_ID; }
-{STRING}	{ yylval.label = yytext; return TK_STR;}
 
 .			{ *yytext; }
 

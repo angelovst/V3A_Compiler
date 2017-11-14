@@ -19,7 +19,7 @@ int yyparse();
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_DOTS TK_2MAIS TK_2MENOS
-%token TK_FIM TK_ERROR
+%token TK_FIM TK_ERROR	TK_ENDL
 
 %start S
 
@@ -33,37 +33,46 @@ int yyparse();
 
 %%
 
-S 			: TK_MAIN '(' ')' MAIN
+S 			: COMANDOS ESCOPO_FIM
 			{
-				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(void)\n{\n" << "\t" + varDeclar + "\n" << $4.traducao << "\treturn 0;\n}" << endl;
+				cout << "Regra S : COMANDOS ESCOPO_FIM" << endl;	//debug
+				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << $1.traducao << "\n\treturn 0;\n}" << endl;
 
 			}
-			;
+			;		
 
-MAIN		: TK_BLOCO_ABRIR COMANDOS TK_BLOCO_FECHAR
+BLOCO	: TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM
 			{
-				$$.traducao = $2.traducao;
-			}
-			;
-
-ESCOPO_INICIO: {
-				//cout << "contexto empilhado" << endl;	//debug
+				cout << "Regra BLOCO : TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM" << endl;	//debug
 				empContexto();
 				
-				$$.traducao = "";
+				$$.traducao = newLine("{\n" + $3.traducao + $2.traducao + "}");
 				$$.label = "";
-			};
+			}
+			;
 			
-ESCOPO_FIM	:	{
-				//cout << "contexto desempilhado" << endl;	//debug
-				desempContexto();
+ESCOPO_FIM	:	TK_BLOCO_FECHAR
+			{
 				
-				$$.traducao = "";
+				string declar = contextStack.begin()->declar;
+				//cout << "declaracoes " << declar << endl;	//debug
+				desempContexto();
 				$$.label = "";
-			};
+				$$.traducao = declar;
+			}
+			|
+			{
+				string declar = contextStack.begin()->declar;
+				//cout << "declaracoes " << declar << endl;	//debug
+				desempContexto();
+				$$.label = "";
+				$$.traducao = declar;			
+			}
+			;
 
 
 LOOP_INICIO	:{
+				cout << "Regra LOOP_INICIO : vazio" << endl;	//debug
 				empLoop();
 				empContexto();
 				
@@ -72,6 +81,7 @@ LOOP_INICIO	:{
 			};
 			
 LOOP_FIM	:	{
+				cout << "Regra LOOP_FIM : vazio" << endl;	//debug
 				desempLoop();
 				desempContexto();
 				
@@ -79,101 +89,131 @@ LOOP_FIM	:	{
 				$$.label = "";
 			};
 
-BLOCO		: ESCOPO_INICIO TK_BLOCO_ABRIR COMANDOS TK_BLOCO_FECHAR ESCOPO_FIM {
-				$$.traducao = $3.traducao;
-			};
-
 COMANDOS	: COMANDO COMANDOS
 			{
-				//cout << "comando traduzido" << endl;	//debug
+				cout << "Regra COMANDOS : COMANDO COMANDOS" << endl;	//debug
 				$$.traducao = $1.traducao + $2.traducao;
 			}
-			| {$$.traducao = "";}
+			|
+			{
+				cout << "Regra COMANDOS : vazio" << endl;
+			}	
 			;
 
-COMANDO 	: E ';'
-
-			| ATRIBUICAO ';'
+COMANDO 	: E TK_ENDL
 			{
+				cout << "Regra COMANDO : E TK_ENDL" << endl;
+			}
+
+			| DECLARACAO TK_ENDL
+			{
+				cout << "Regra COMANDO : DECLARACAO TK_ENDL" << endl;
+				$$.traducao = $1.traducao;
+			}
+			
+			| BLOCO
+			{
+				cout << "Regra COMANDO : BLOCO" << endl;
 				$$.traducao = $1.traducao;
 			}
 			
 			| CONTROLE
 			{
+				cout << "Regra COMANDO : CONTROLE" << endl;
 				$$.traducao = $1.traducao;
 			}
 
-			| LOOP_ALT ';'
+			| LOOP_ALT TK_ENDL
 			{
+				cout << "Regra COMANDO : LOOP_ALT TK_ENDL" << endl;
 				$$.traducao = $1.traducao;
 			}
-			| PRINT ';'
+			| PRINT TK_ENDL
 			{
+				cout << "Regra COMANDO : PRINT TK_ENDL" << endl;
 				$$.traducao = $1.traducao + " << endl;\n";
 			}
 			;
 
 E 			: E OP_INFIX E {
-				//cout << "operacao infixa executada" << endl;	//debug
-				$$.label = generateVarLabel();
-				varDeclar += $$.tipo->label + " " + $$.label + ";\n\t";
+				cout << "Regra E : E OP_INFIX E" << endl;	//debug
+				void *args[4];
+				string traducao;
+				
+				$$.label = generateVarLabel();	//retorno
+				if ($2.tipo->retornos != NULL) {	//caso retorno nao seja especificado inferir o tipo
+					declararLocal(resolverTipo($1.tipo, $3.tipo), $$.label);
+				} else {
+					declararLocal((*$2.tipo->retornos)[0], $$.label);
+				}	
 				$$.traducao = $1.traducao + $3.traducao;
-				string args[3];
-				string var1, var2;
-				string cast = implicitCast (&$1, &$3, &var1, &var2);
 				
-				if (cast == INVALID_CAST) {
-					yyerror("Impossivel converter " + $1.tipo->label + " e " + $3.tipo->label);
-				}
+				args[0] = &$1;
+				args[1] = &$3;
+				args[2] = &$$.label;
+				args[3] = &$2.tipo->label;
 				
-				args[0] = var1;
-				args[1] = $2.label;
-				args[2] = var2;
-				$$.traducao += cast + "\t" + $$.label + " = " + $2.tipo->traducaoParcial((void*)args) + ";\n";
+				traducao = $2.tipo->traducaoParcial((void*)args);
+				if (traducao == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $3.tipo->label);
+				} else if (traducao == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				}	
+				
+				$$.traducao += traducao;
 				
 			}
 			| '(' TIPO ')' E
 			{	
 				//cout << "cast executado" << endl;	//debug
+				cout << "Regra E : ( TIPO ) E" << endl;	//debug
 				$$.label = generateVarLabel();
-				varDeclar += $2.tipo->label + " " + $$.label + ";\n\t";
+				declararLocal($2.tipo, $$.label);
 				$$.tipo = $2.tipo;
-				$$.traducao = $4.traducao + "\t" + $$.label + " =" + '(' + $2.tipo->label + ')' + $4.label + ";\n";
+				$$.traducao = $4.traducao + newLine($$.label + " = " + '(' + $2.tipo->label + ')' + $4.label);
 			}
 
 			| '(' E ')'
 			{
+				cout << "Regra E : ( E )" << endl;	//debug
 				//cout << "parentizacao feita" << endl;	//debug
 				$$.label = $2.label; //generateVarLabel();
 				$$.traducao = $2.traducao;// + "\t" + $$.label + " = " + $2.label + ";\n";
 			}
 			| '-' E
 			{
+				cout << "Regra E : -E" << endl;	//debug
 				//cout << "inversao feita" << endl;	//debug
 				$$.label = generateVarLabel();
-				$$.traducao = $2.traducao + "\t" + $$.label + " = " + " - " + $2.label + ";\n";
+				$$.traducao = $2.traducao + newLine($$.label + " = " + " - " + $2.label);
 			}
 			| INCREMENTOS
-
-			| TK_TIPO_INT
 			{
+				cout << "Regra E : INCREMENTOS" << endl;	//debug
+			}
+
+			| TK_INT
+			{
+				cout << "Regra E : TK_INT" << endl;	//debug
 				$$.label = generateVarLabel();
-				varDeclar += "int " + $$.label + ";\n\t";
-				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
+				declararLocal(&tipo_int, $$.label);
+				$$.traducao = newLine($$.label + " = " + $1.label);
 				$$.tipo = &tipo_int;
 			}
-			| TK_TIPO_FLOAT
+			| TK_FLOAT
 			{
+				cout << "Regra E : TK_FLOAT" << endl;	//debug
 				$$.label = generateVarLabel();
-				varDeclar += "float " + $$.label + ";\n\t";
+				declararLocal(&tipo_float, $$.label);
 				$$.traducao = "\t" + $$.label + " = " + $1.label + ";\n";
 				$$.tipo = &tipo_float;
 			}
-			| TK_TIPO_BOOL
+			| TK_BOOL
 			{
+				cout << "Regra E : TK_BOOL" << endl;	//debug
 				string aux;
 				
-				if($1.label == "true") {
+				if($1.label == BOOL_TRUE) {
 					aux = "1";
 				}
 				else {
@@ -181,126 +221,179 @@ E 			: E OP_INFIX E {
 				}
 
 				$$.label = generateVarLabel();
-				varDeclar += "unsigned char " + $$.label + ";\n\t";
-				$$.traducao = "\t" + $$.label + " = " + aux + ";\n";
+				declararLocal(&tipo_bool, $$.label);
+				$$.traducao = newLine($$.label + " = " + aux);
 				$$.tipo = &tipo_bool;
 
 			}
-			| TK_TIPO_CHAR
+			| TK_CHAR
 			{
+				cout << "Regra E : TK_CHAR" << endl;	//debug
 				$$.label = generateVarLabel();
-				varDeclar += "char " + $$.label + ";\n\t";
-				$$.traducao = "\t" + $$.label + " = " + $1.label +  ";\n";
+				declararLocal(&tipo_char, $$.label);
+				$$.traducao = newLine($$.label + " = " + $1.label);
 				$$.tipo = &tipo_char;
 			}
 			| TK_ID
 			{
-				atributos *id = findVar($1.label);
-				if(id != nullptr) {
-					$$.tipo = id->tipo;
-					$$.label = $1.label;
-				}
-				else {
-					$$.label = generateVarLabel();
-					$$.traducao = "\t" + $$.label + " = " + $1.label + ":\n";
-				}
+				cout << "Regra E : TK_ID" << endl;	//debug
+				$$.tipo = NULL;
+				$$.label = $1.label;
+				$$.traducao = "";
 			}
 			;
 			
+DECLARACAO 	: TIPO TK_ID
+			{
+				//cout << "tipo " << $1.tipo->label << " declarado" << endl;
+				cout << "Regra DECLARACAO : TIPO TK_ID" << endl;	//debug
+				$$.tipo = $1.tipo;
+				if(!declararLocal($1.tipo, $2.label)) {
+					yyerror("Variavel ja declarada localmente");
+				}	
+
+			}
+
+			| TIPO TK_ID TK_ATRIB E
+			{
+				cout << "Regra DECLARACAO : TIPO TK_ID TK_ATRIB E" << endl;	//debug
+				if(!declararLocal($1.tipo, $2.label)) {
+        			yyerror("Variavel ja declarada");	
+				}
+				string atrib;
+				atributos *args[2] = {&$1, &$4};
+				
+				$$.tipo = $1.tipo;
+				atrib = traducaoAtribuicao((void*)args);
+				if (atrib == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $3.tipo->label);
+				}
+				$$.traducao = atrib;
+			}
+			;			
+			
 OP_INFIX	: TK_PLUS
 			{
+				cout << "Regra OP_INFIX : TK_PLUS" << endl;	//debug
 				$$.label = "+";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_arithmetic_operator;
 			}
-			| TK_MINUS {
+			| TK_MINUS
+			{
+				cout << "Regra OP_INFIX : TK_MINUS" << endl;	//debug
 				$$.label = "-";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_arithmetic_operator;
 			}
-			| TK_MULT {
+			| TK_MULT
+			{
+				cout << "Regra OP_INFIX : TK_MULT" << endl;	//debug
 				$$.label = "*";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_arithmetic_operator;
 			}
 			| TK_DIV {
+				cout << "Regra OP_INFIX : TK_DIV" << endl;	//debug
 				$$.label = "/";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_arithmetic_operator;
 			}
 			| TK_MOD {
+				cout << "Regra OP_INFIX : TK_MOD" << endl;	//debug
 				$$.label = "%";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_arithmetic_operator;
 			}
 			| TK_AND  {
+				cout << "Regra OP_INFIX : TK_AND" << endl;	//debug
 				$$.label = "&&";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_OR {
+				cout << "Regra OP_INFIX : TK_OR" << endl;	//debug
 				$$.label = "||";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_DIFERENTE  {
+				cout << "Regra OP_INFIX : TK_DIFERENTE" << endl;	//debug
 				$$.label = "!=";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_IGUAL  {
+				cout << "Regra OP_INFIX : TK_IGUAL" << endl;	//debug
 				$$.label = "==";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_MAIOR {
+				cout << "Regra OP_INFIX : TK_MAIOR" << endl;	//debug
 				$$.label = ">";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_MENOR  {
+				cout << "Regra OP_INFIX : TK_MENOR" << endl;	//debug
 				$$.label = "<";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_MAIORI  {
+				cout << "Regra OP_INFIX : TK_MAIORI" << endl;	//debug
 				$$.label = ">=";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
 			}
 			| TK_MENORI  {
+				cout << "Regra OP_INFIX : TK_MENORI" << endl;	//debug
 				$$.label = "<=";
-				$$.tipo = &tipo_inf_operator;
+				$$.tipo = &tipo_logic_operator;
+			}
+			| TK_ATRIB {
+				cout << "Regra OP_INFIX : TK_ATRIB" << endl;	//debug
+				$$.label = "=";
+				$$.tipo = &tipo_atrib_operator;
 			}
 			;
 
-INCREMENTOS	: TK_ID SINAL_DUPL {
+INCREMENTOS	: TK_ID SINAL_DUPL
+			{
+				cout << "Regra INCREMENTOS : TK_ID SINAL_DUPL" << endl;	//debug
 
-				atributos *id = findVar($1.label);
-				if ( id == nullptr ) yyerror("Variavel " + $1.label + " nao declarada para ser incrementada");
+				Tipo *tipo = findVar($1.label);
+				if (tipo == NULL) yyerror("Variavel " + $1.label + " nao declarada");
 
-				if(id->tipo != &tipo_int) yyerror("Variavel " + $1.label + " nao pode ser incrementada (tipo diferente de int)");
+				if(tipo != &tipo_int) yyerror("Variavel " + $1.label + " nao pode ser incrementada (tipo diferente de int)");
 
 				string var1 = generateVarLabel();
 				string var2 = generateVarLabel();
 
-				varDeclar += "int " + var1 + ";\n\t";
-				varDeclar += "int " + var2 + ";\n\t";
+				declararLocal(&tipo_int, var1);
+				declararLocal(&tipo_int, var2);
 
 				$$.label = var2;
-				$$.tipo = id->tipo;
-				$$.traducao = "\t" + var2 + " = " + id->label + ";\n\t" + var1 + " = 1;\n\t" + 
-								id->label + " = " + id->label + $2.label + var1 + ";\n";
+				$$.tipo = tipo;
+				$$.traducao =	newLine(var2 + " = " + $1.label + ";\n\t" + var1 + " = 1") + 
+								newLine(tipo->label + " = " + $1.label + $2.label + var1);
 			}
-			| SINAL_DUPL TK_ID {
+			| SINAL_DUPL TK_ID
+			{
+				cout << "Regra INCREMENTOS : SINAL_DUPL TK_ID" << endl;	//debug
 
-				atributos *id = findVar($2.label);
-				if ( id == nullptr ) yyerror("Variavel " + $2.label + " nao declarada para ser incrementada");
+				Tipo *tipo = findVar($2.label);
+				if (tipo == NULL) yyerror("Variavel " + $2.label + " nao declarada");
 
-				if( id->tipo != &tipo_int ) yyerror("Variavel " + $2.label + " nao pode ser incrementada (tipo diferente de int)");
+				if(tipo != &tipo_int) yyerror("Variavel " + $2.label + " nao pode ser incrementada (tipo diferente de int)");
 
 				string var = generateVarLabel();
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 
-				$$.label = id->label;
-				$$.tipo = id->tipo;
-				$$.traducao = "\t" + var + " = 1;\n\t" + $$.label + " = " + $$.label + " + " + var + ";\n";
+				$$.label = $2.label;
+				$$.tipo = tipo;
+				$$.traducao = newLine(var + " = 1") + newLine($$.label + " = " + $$.label + " + " + var);
 
 			}
 			;
-SINAL_DUPL	: TK_2MAIS {
+SINAL_DUPL	: TK_2MAIS
+			{
+				cout << "Regra SINAL_DUPL : TK_2MAIS" << endl;	//debug
 				$$.label = " + ";
 				$$.traducao = "";
 			}
-			| TK_2MENOS {
+			| TK_2MENOS
+			{
+				cout << "Regra SINAL_DUPL : TK_2MENOS" << endl;	//debug
 				$$.label = " - ";
 				$$.traducao = "";
 			}
@@ -308,221 +401,147 @@ SINAL_DUPL	: TK_2MAIS {
 			
 CONTROLE	: TK_IF E TK_DOTS BLOCO
 			{
-				cout << $2.tipo->label << endl;
-				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
+				//cout << $2.tipo->label << endl;	//debug
+				cout << "Regra CONTROLE : TK_IF E TK_DOTS BLOCO" << endl;	//debug
+				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
 
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 					
-					$$.traducao = "\n" + $2.traducao + 
-						"\t" + var + " = !" + $2.label + ";\n" +
-						"\tif (" + var + ") goto " + fim + ";\n\n" +
-						$4.traducao +
-						"\n\t" + fim + ":\n\n";
+				$$.traducao = $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao += $4.traducao + fim+":\n";
 			}
 			| TK_IF E TK_DOTS BLOCO CONTROLE_ALT
 			{
+				cout << "Regra CONTROLE : TK_IF E TK_DOTS BLOCO CONTROLE_ALT" << endl;	//debug
 
-				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
+				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
 
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 
-				$$.traducao = "\n" + $2.traducao + 
-						"\t" + var + " = !" + $2.label + ";\n" +
-						"\tif (" + var + ") goto " + fim + ";\n\n" +
-						$4.traducao +
-						"\tgoto " + $5.label + ";\n\n" +
-						"\t" + fim + ":" + $5.traducao;
+				$$.traducao = $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao += $4.traducao + newLine("goto " + $5.label) + fim + ":\n" + $5.traducao;
 				
 			}
 
-			| LOOP_INICIO LOOP LOOP_FIM
+			| LOOP
 			{
-				$$.traducao = $2.traducao;
+				cout << "Regra CONTROLE : LOOP_INICIO LOOP LOOP_FIM" << endl;	//debug
+				$$.traducao = $1.traducao;
 			}
 
 			;
 
 CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
 			{
+				cout << "Regra CONTROLE_ALT : TK_ELSE TK_IF E TK_DOTS BLOCO" << endl;	//debug
 				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
 
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 
 				$$.label = fim;
-				$$.traducao = "\n" + $3.traducao + 
-						"\t" + var + " = !" + $3.label + ";\n\n" +
-						"\tif (" + var + ") goto " + fim + ";\n" +
-						$5.traducao +
-						"\n\t" + fim + ":\n";
+				$$.traducao = $3.traducao + newLine(var + " = !" + $3.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao += $5.traducao + fim + ":\n" + "\n";
 
 			}
 
 			| TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT
 			{
+				cout << "Regra CONTROLE_ALT : TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT" << endl;	//debug
 				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do else if DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
 
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 
 				$$.label = $6.label;
-				$$.traducao = "\n" + $3.traducao + 
-						"\t" + var + " = !" + $3.label + ";\n\n" +
-						"\tif (" + var + ") goto " + fim + ";\n" +
-						$5.traducao +
-						"\n\tgoto " + $6.label + ";\n" +
-						"\n\t" + fim + ":" + $6.traducao;
+				$$.traducao = $3.traducao + newLine(var + " = !" + $3.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao += $5.traducao + newLine("goto " + $6.label) + fim + ":\n" + $6.traducao + "\n";
 
 			}
 
 			| TK_ELSE TK_DOTS BLOCO
 			{
+				cout << "Regra CONTROLE_ALT : TK_ELSE TK_DOTS BLOCO" << endl;	//debug
 				$$.label = generateLabel();
-				$$.traducao = "\n" + $3.traducao + "\n\t" + $$.label + ":\n";
+				$$.traducao = $3.traducao + $$.label + ":\n";
 
 			}
 
 
 			;
 
-
-ATRIBUICAO 	: TIPO TK_ID
+LOOP 		: TK_FOR DECLARACAO ';' E ';' INCREMENTOS TK_DOTS BLOCO
 			{
-				std::map<string, atributos> *mapLocal = &varMap.back();
-
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-					yyerror("Variavel ja declarada localmente");
-				}
-				else {
-					$$.label = generateVarLabel();
-					$$.tipo = $1.tipo;
-					varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
-					(*mapLocal)[$2.label] = $$;
-				}
-					
-
-			}
-
-			| TIPO TK_ID TK_ATRIB E
-			{	
-				std::map<string, atributos> *mapLocal = &varMap.back();
-				if(mapLocal->find($2.label) != mapLocal->end()) {
-        			yyerror("Variavel usada para atribuicao ja declarada");	
-				}
-				else if( $1.tipo == $4.tipo ){
-					if (mapLocal->find($4.label) != mapLocal->end())	{
-						$$.label = generateVarLabel();
-						$$.tipo = $1.tipo;
-						$$.traducao = "\t" + $$.label + " = " + (*mapLocal)[$4.label].label + ";\n";
-						varDeclar += $1.traducao + $2.traducao + $$.tipo->label + " " + $$.label + ";\n\t";
-						(*mapLocal)[$2.label] = $$;
-					}
-					else {
-						$$.label = $4.label;
-						$$.traducao = $1.traducao + $2.traducao + $4.traducao;
-						$$.tipo = $1.tipo;
-						(*mapLocal)[$2.label] = $$;
-					}
-				}
-				else {
-					yyerror("Atribuicao de tipos nao compativeis");
-				}
-			}
-			| TK_ID TK_ATRIB E
-			{
-				atributos* atr;
-				if ( atr = findVar($1.label) ) {
-					if(atr->tipo == $3.tipo) {
-						$$.traducao = $3.traducao + "\t" + atr->label + " = " + $3.label + ";\n";
-					}
-					else yyerror("atr de tipos incompativeis");
-				}
-				else {
-					std::map<string, atributos> *mapLocal = &varMap.back();
-					$$.label = $3.label;
-					$$.tipo = $3.tipo;
-					$$.traducao = $3.traducao;
-					(*mapLocal)[$1.label] = $$;
-
-				}
-			}
-			;
-
-LOOP 		: TK_FOR ATRIBUICAO ';' E ';' INCREMENTOS TK_DOTS BLOCO {
-				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do for DEVE ser bool");
+				cout << "Regra LOOP : TK_FOR DECLARACAO ; E ; INCREMENTOS TK_DOTS BLOCO" << endl;	//debug
+				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				loopLabel* loop = getLoop(1);
 
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 
-				$$.traducao = $2.traducao + "\n\t" + loop->inicio + ":\n" + $4.traducao + 
-						"\t" + var + " = !" + $4.label + ";\n" +
-						"\tif (" + var + ") goto " + loop->fim + ";\n\n" +
-						$8.traducao + "\t" + loop->progressao + ":\n\n" + $6.traducao +
-						"\tgoto " + loop->inicio + ";\n\n\t" + 
-						loop->fim + ":\n";
+				$$.traducao = $2.traducao + "\n" + ident() + loop->inicio + ":\n" + $4.traducao + newLine(var + " = !" + $4.label);
+				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $8.traducao + loop->progressao + ":\n\n" + $6.traducao;
+				$$.traducao += newLine("goto " + loop->inicio) + loop->fim + ":\n";
 
 			}
 
-			|TK_WHILE E TK_DOTS BLOCO 
+			| TK_WHILE E TK_DOTS BLOCO 
 			{
+				cout << "Regra LOOP : TK_WHILE E TK_DOTS BLOCO" << endl;	//debug
 				if ($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do while DEVE ser bool");
 				string var = generateVarLabel();
 				loopLabel* loop = getLoop(1);
 					
-				varDeclar += "int " + var + ";\n\t";
+				declararLocal(&tipo_int, var);
 					
-				$$.traducao = "\t" + loop->inicio + ":\n\t" 
-					+ loop->progressao + ":\n" + $2.traducao
-					+ "\t" + var + " = !" + $2.label + ";\n" +
-					"\tif (" + var + ") goto " + loop->fim + ";\n" +
-					$4.traducao +
-					"\tgoto " + loop->inicio + ";\n\t" + loop->fim + ":\n";
+				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
+				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $4.traducao + newLine("goto " + loop->inicio) + loop->fim + ":\n";
 				
 			}
 
-			| TK_DO BLOCO TK_WHILE E ';' {
-
+			| TK_DO BLOCO TK_WHILE E TK_ENDL {
+				cout << "Regra LOOP : TK_DO BLOCO TK_WHILE E TK_ENDL" << endl;	//debug
 				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
 
 				loopLabel* loop = getLoop(1);
 
-				$$.traducao = "\t" + loop->inicio + ":\n\t" 
-						+ loop->progressao + ":\n" + $4.traducao 
-						+ $2.traducao + "\tif (" 
-						+ $4.label + ") goto " + loop->inicio + ";\n\t"
-						+ loop->fim + ":\n";
+				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $4.traducao + $2.traducao + newLine("if (" + $4.label + ") goto " + loop->inicio);
+				$$.traducao += loop->fim + ":\n";
 
 			}
-
 			;
-LOOP_ALT	: TK_BREAK {
+			
+LOOP_ALT	: TK_BREAK
+			{
+				cout << "Regra LOOP_ALT : TK_BREAK" << endl;	//debug
 				loopLabel* loop = getLoop(1);
 				
 				if (loop == nullptr) yyerror("Break deve ser usado dentro de um loop");
 
-				$$.traducao = "\tgoto " + loop->fim + ";\n";
+				$$.traducao = newLine("goto " + loop->fim);
 				
 			}
 			| TK_BREAK TK_ALL {
+				cout << "Regra LOOP_ALT : TK_BREAK TK_ALL" << endl;	//debug
 				loopLabel* loop = getOuterLoop();
 				
 				if (loop == nullptr) yyerror("Break all deve ser usado dentro de um loop");
 
-				$$.traducao = "\tgoto " + loop->fim + ";\n";
+				$$.traducao = newLine("goto " + loop->fim);
 			}
 			| TK_BREAK '(' TK_INT ')' {
+				cout << "Regra LOOP_ALT : TK_BREAK ( TK_INT )" << endl;	//debug
 				loopLabel* loop = getLoop(stoi($3.label));
 				
 				if (loop == nullptr) yyerror("Break com args deve ser usado dentro de um loop\nou\nargumento invalido");
@@ -530,65 +549,68 @@ LOOP_ALT	: TK_BREAK {
 				$$.traducao = "\tgoto " + loop->fim + ";\n";
 			}
 			| TK_CONTINUE {
+				cout << "Regra LOOP_ALT : TK_CONTINUE" << endl;	//debug
 				loopLabel* loop = getLoop(1);
 				
 				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
 
-				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+				$$.traducao = newLine("goto " + loop->progressao);
 			}
 			| TK_CONTINUE TK_ALL {
+				cout << "Regra LOOP_ALT : TK_CONTINUE TK_ALL" << endl;	//debug
 				loopLabel* loop = getOuterLoop();
 				
 				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
 
-				$$.traducao = "\tgoto " + loop->progressao + ";\n";
+				$$.traducao = newLine("goto " + loop->progressao);
 			}
 			;
 
 PRINT		: TK_PRINT PRINT_ALT
 			{
+				cout << "Regra PRINT : TK_PRINT PRINT_ALT" << endl;	//debug
 				$$.traducao = $2.traducao + "\tcout" + $2.label;
 			}
 			;
+			
 PRINT_ALT	: E
 			{
-				string label;
-				atributos* atr;
-				if ( atr = findVar($1.label) ) label = atr->label;
-				else label = $1.label;
+				cout << "Regra PRINT_ALT : E" << endl;	//debug
 				$$.traducao = $1.traducao;
-				$$.label = " << " + label;
+				$$.label = " << " + $1.label;
 			}
 
 			| E ',' PRINT_ALT
 			{
-				string label;
-				atributos* atr;
-				if ( atr = findVar($1.label) ) label = atr->label;
-				else label = $1.label;
+				cout << "Regra PRINT_ALT : E , PRINT_ALT" << endl;	//debug
 				$$.traducao = $1.traducao + $3.traducao;
-				$$.label = " << " + label + $3.label;
+				$$.label = " << " + $1.label + $3.label;
 			}
 			;
 
 TIPO 		: TK_TIPO_INT
 			{
+				cout << "Regra TIPO : TK_TIPO_INT" << endl;	//debug
 				$$.tipo = &tipo_int;
 			}
 			| TK_TIPO_FLOAT
 			{
+				cout << "Regra TIPO : TK_TIPO_FLOAT" << endl;	//debug
 				$$.tipo = &tipo_float;
 			}
 			| TK_TIPO_BOOL
 			{
+				cout << "Regra TIPO : TK_TIPO_BOOL" << endl;	//debug
 				$$.tipo = &tipo_bool;
 			}
 			| TK_TIPO_CHAR
 			{
+				cout << "Regra TIPO : TK_TIPO_CHAR" << endl;	//debug
 				$$.tipo = &tipo_char;
 			}
 			| TK_TIPO_LIST
 			{
+				cout << "Regra TIPO : TK_TIPO_LIST" << endl;	//debug
 				$$.tipo = &tipo_list;
 			}
 			;
@@ -599,9 +621,7 @@ TIPO 		: TK_TIPO_INT
 
 int main( int argc, char* argv[] )
 {
-	map<string, atributos> mapaGlobal;
-	varMap.push_back(mapaGlobal);
-
+	empContexto();
 	cout << "parsing" << endl;	//debug
 	yyparse();
 	cout << "parsed" << endl;	//debug
@@ -611,6 +631,6 @@ int main( int argc, char* argv[] )
 
 void yyerror( string MSG )
 {
-	cout << MSG << endl;
+	cout << "Linha " << line << ": " << MSG << endl;
 	exit (0);
 }

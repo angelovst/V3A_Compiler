@@ -2,50 +2,39 @@
 
 #include <iostream>
 
-Tipo tipo_float = { TIPO_FLOAT, sizeof(float), NULL, NUMBER_SUBSET*2 };
-Tipo tipo_int = { TIPO_INT, sizeof(int), NULL, NUMBER_SUBSET };
+Tipo tipo_float = { TIPO_FLOAT_ID, NUMBER_SUBSET*2, sizeof(float), TIPO_FLOAT, NULL, NULL, NULL };
+Tipo tipo_int = { TIPO_INT_ID, NUMBER_SUBSET, sizeof(int), TIPO_INT, NULL, NULL, NULL };
+Tipo tipo_bool = { TIPO_BOOL_ID, UNCASTABLE, sizeof(unsigned char), TIPO_BOOL, NULL, NULL, NULL };
+Tipo tipo_char = { TIPO_CHAR_ID, UNCASTABLE, sizeof(char), TIPO_CHAR, NULL, NULL, NULL };
+Tipo tipo_list = { TIPO_LIST_ID, UNCASTABLE, sizeof(size_t)+2*sizeof(void*), TIPO_LIST, NULL, NULL, NULL };
+Tipo tipo_ref = { TIPO_REF_ID, 0, sizeof(void*), TIPO_REF, NULL, NULL, NULL};
 
-Tipo tipo_bool = { TIPO_BOOL, sizeof(unsigned char), NULL, UNCASTABLE };
-Tipo tipo_char = { TIPO_CHAR, sizeof(char), NULL, -1};
-Tipo tipo_list = { TIPO_LIST, sizeof(size_t)+2*sizeof(void*), NULL, UNCASTABLE };
-Tipo tipo_inf_operator = { TIPO_INFIX_OPERATOR, 0, &traducaoInfixaPadrao, UNCASTABLE };
+Tipo tipo_arithmetic_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoLAPadrao, NULL, NULL };
+Tipo tipo_logic_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
+Tipo tipo_atrib_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoAtribuicao, NULL, NULL };
+
+unsigned int line = 1;
 
 //Pilha de variaveis
-std::vector<std::map<std::string, atributos>> varMap;
-
-//String para declaracao de var
-std::string varDeclar;
+std::list<Context> contextStack;
+unsigned int contextDepth = 0;
 
 //Pilha de labels de loop
 std::vector<loopLabel> loopMap;
 
 using namespace std;
 
+string newLine (const string &line) {
+	return ident() + line + ";\n";
+}
+
 //FUNCOES DE PROCURA DE VARIAVEL
-
-atributos* findVarOnTop(string label) {
-	if (varMap[varMap.size() - 1].count(label)) {
-		return &varMap[varMap.size() - 1][label];
-	}
-	
-	return nullptr;
-}
-
-atributos* findVar(string label) {
-	for (int i = varMap.size() - 1; i >= 0; i--) {
-		if (varMap[i].count(label)) {
-			return &varMap[i][label];
-		}
-	}	
-	return nullptr;
-}
-string findTmpName(string label) {
-	for (int i = varMap.size() - 1; i >= 0; i--) {
-		if (varMap[i].count(label)) {
-			return varMap[i][label].label;
-		}
-	}	
-	return "null";
+Tipo* findVar(string &label) {
+	list<Context>::iterator i = contextStack.begin();
+	while (i != contextStack.end() && !i->vars.count(label)) {
+		i++;
+	}		
+	return (i == contextStack.end()) ? NULL : i->vars[label];
 }
 
 string generateVarLabel (void) {
@@ -65,40 +54,68 @@ string implicitCast (atributos *var1, atributos *var2, string *label1, string *l
 		return "";
 	} else if (cast < 0) {	//cast var1 para var2
 		*label1 = generateVarLabel();
-		varDeclar += var2->tipo->label + " " + *label1 + ";\n\t";
+		declararLocal(var2->tipo, *label1);
 		*label2 = var2->label;
-		return "\t" + *label1 + " = (" + var2->tipo->label + ")" + var1->label + ";\n";
+		return newLine(*label1 + " = (" + var2->tipo->label + ")" + var1->label);
 	}
 	//cast var2 para var1
 	*label1 = var1->label;
 	*label2 = generateVarLabel();
-	varDeclar += var1->tipo->label + " " + *label2 + ";\n\t";
-	return "\t" + *label2 + " = (" + var1->tipo->label + ")" + var2->label + ";\n";
+	declararLocal(var1->tipo, *label2);
+	return newLine(*label2 + " = (" + var1->tipo->label + ")" + var2->label);
 }
 
-string traducaoInfixaPadrao (void *args)  {
-	string *operando = (string*)args;
-	string &var1 = operando[0];
-	string &operador = operando[1];
-	string &var2 = operando[2];
-	
-	return var1 + operador + var2;
+Tipo* resolverTipo (Tipo *a, Tipo *b) {
+	if (a == NULL) {
+		return b;
+	} else if (b == NULL) {
+		return a;
+	} else if (a->subset - b->subset < 0) {	//b e o tipo do retorno
+		return b;
+	}
+	return a;	//a e o tipo do retorno
 }
 
-string generateLabel (void) {
-	static unsigned int i = 0;
-	return "LABEL_" + to_string(i++);
+bool declararGlobal (Tipo *tipo, std::string &label) {
+	list<Context>::iterator bottom = contextStack.end()--;
+	if (bottom->vars.count(label)) {
+		return false;
+	}
+	bottom->declar += tipo->label + " " + label + ";\n\t";
+	bottom->vars[label] = tipo;
+	return true;
+}
+
+bool declararLocal (Tipo *tipo, std::string &label) {
+	list<Context>::iterator top = contextStack.begin();
+	if (top->vars.count(label) || label == "") {
+		return false;
+	}
+	top->declar += newLine(tipo->label + " " + label);	
+	top->vars[label] = tipo;
+	//cout << "declaracao " << tipo->label << " " << label << endl;	//debug
+	return true;
 }
 
 //FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
 void empContexto (void) {
-	map<string, atributos> mapa;
-	varMap.push_back(mapa);
+	contextStack.push_front({map<string, Tipo*>(), ""});
+	contextDepth++;
 }
 
 void desempContexto (void) {
-	return varMap.pop_back();
+	contextStack.pop_front();
+	contextDepth--;
 }
+
+string ident (void) {
+	std::string identation = "";
+	for (unsigned int i = 0; i < contextDepth; i++) {
+		identation += "\t";
+	}
+	return identation;	
+}
+
 //FUNCOES PARA CONTROLE DOS BLOCOS DE LOOP
 void empLoop() {
 	string inicio = generateLabel();
@@ -127,4 +144,51 @@ loopLabel* getOuterLoop() {
 	} else {
 		return nullptr;
 	}
+}
+
+string generateLabel (void) {
+	static unsigned int i = 0;
+	return "LABEL_" + to_string(i++);
+}
+
+/*FUNCOES DE OPERADORES*/
+string traducaoLAPadrao (void *args)  {
+	atributos **atribs = (atributos**)args;
+	string **labels = (string**)((atributos**)args+2);
+	
+	string *retorno = labels[0];
+	string *operador = labels[1];
+	
+	string varALabel;	//labels[1]
+	string varBLabel;	//labels[3]
+	
+	string cast = implicitCast (atribs[0], atribs[1], &varALabel, &varBLabel);
+	if (cast == INVALID_CAST) {
+		return INVALID_CAST;
+	}	
+	
+	return cast + "\t" + *retorno + " = " + varALabel + *operador + varBLabel + ";\n";
+}
+
+string traducaoAtribuicao (void *args) {
+	atributos **atribs = (atributos**)args;
+	atributos *lvalue = atribs[0];
+	atributos *rvalue = atribs[1];
+	
+	lvalue->tipo = findVar(lvalue->label);
+	//declarar variavel caso ainda nao tenha sido declarada
+	if (lvalue->tipo == NULL) {
+		if (!declararLocal(rvalue->tipo, lvalue->label)) {
+			return VAR_ALREADY_DECLARED;
+		}
+		lvalue->tipo = rvalue->tipo;
+	}
+	
+	if (rvalue->tipo->id == lvalue->tipo->id || rvalue->tipo->subset < lvalue->tipo->subset) {
+		string cast;
+		string rlabel, llabel;
+		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
+		return cast + "\t" + llabel + " = " + rlabel + ";\n";
+	}
+	return INVALID_CAST;
 }
