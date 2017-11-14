@@ -88,9 +88,11 @@ bool declararGlobal (Tipo *tipo, std::string &label) {
 
 bool declararLocal (Tipo *tipo, std::string &label) {
 	list<Context>::iterator top = contextStack.begin();
-	if (top->vars.count(label) || label == "") {
+
+	if (top->vars.count(label)) {
 		return false;
 	}
+
 	top->declar += newLine(tipo->label + " " + label);	
 	top->vars[label] = tipo;
 	//cout << "declaracao " << tipo->label << " " << label << endl;	//debug
@@ -167,13 +169,14 @@ string traducaoLAPadrao (void *args)  {
 		return INVALID_CAST;
 	}	
 	
-	return cast + "\t" + *retorno + " = " + varALabel + *operador + varBLabel + ";\n";
+	return cast + newLine(*retorno + " = " + varALabel + *operador + varBLabel);
 }
 
 string traducaoAtribuicao (void *args) {
 	atributos **atribs = (atributos**)args;
 	atributos *lvalue = atribs[0];
 	atributos *rvalue = atribs[1];
+	string *retorno = *((string**)((atributos**)args+2));
 	
 	lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
@@ -188,7 +191,7 @@ string traducaoAtribuicao (void *args) {
 		string cast;
 		string rlabel, llabel;
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
-		return cast + "\t" + llabel + " = " + rlabel + ";\n";
+		return cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	}
 	return INVALID_CAST;
 }

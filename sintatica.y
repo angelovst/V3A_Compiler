@@ -141,11 +141,11 @@ E 			: E OP_INFIX E {
 				string traducao;
 				
 				$$.label = generateVarLabel();	//retorno
-				if ($2.tipo->retornos != NULL) {	//caso retorno nao seja especificado inferir o tipo
+				if ($2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
 					declararLocal(resolverTipo($1.tipo, $3.tipo), $$.label);
 				} else {
 					declararLocal((*$2.tipo->retornos)[0], $$.label);
-				}	
+				}
 				$$.traducao = $1.traducao + $3.traducao;
 				
 				args[0] = &$1;
@@ -237,7 +237,7 @@ E 			: E OP_INFIX E {
 			| TK_ID
 			{
 				cout << "Regra E : TK_ID" << endl;	//debug
-				$$.tipo = NULL;
+				$$.tipo = findVar($1.label);
 				$$.label = $1.label;
 				$$.traducao = "";
 			}
@@ -258,17 +258,18 @@ DECLARACAO 	: TIPO TK_ID
 			{
 				cout << "Regra DECLARACAO : TIPO TK_ID TK_ATRIB E" << endl;	//debug
 				if(!declararLocal($1.tipo, $2.label)) {
-        			yyerror("Variavel ja declarada");	
+        			yyerror("Variavel ja declarada");
 				}
 				string atrib;
-				atributos *args[2] = {&$1, &$4};
+				void *args[3] = {&$2, &$4, NULL};
 				
 				$$.tipo = $1.tipo;
+				$2.tipo = $1.tipo;
 				atrib = traducaoAtribuicao((void*)args);
 				if (atrib == INVALID_CAST) {
-					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $3.tipo->label);
+					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $4.tipo->label);
 				}
-				$$.traducao = atrib;
+				$$.traducao = $1.traducao + $4.traducao + atrib;
 			}
 			;			
 			

@@ -82,7 +82,7 @@ std::string generateLabel (void);
 
 //FUNCOES DE OPERADORES
 std::string traducaoLAPadrao (void *args);	//args = (atributos *varA, atributos *varB, string *retorno, string *operador)
-std::string traducaoAtribuicao (void *args);	//args = (atributos *varA, atributos *varB)
+std::string traducaoAtribuicao (void *args);	//args = (atributos *varA, atributos *varB, string *retorno)
 
 //VARIAVEIS GLOBAIS
 extern unsigned int line;	//linha na qual o parser esta, usado para erros
