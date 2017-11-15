@@ -37,7 +37,6 @@ FILE *input;
 %left TK_PLUS TK_MINUS
 %left TK_MULT TK_DIV TK_MOD
 %right TK_2MAIS TK_2MENOS
-%left TK_BLOCO_ABRIR
 
 %%
 
@@ -52,16 +51,17 @@ S 			: COMANDOS
 
 BLOCO	: ESCOPO_INICIO COMANDOS ESCOPO_FIM
 		{
-			cout << "Regra BLOCO : ESCOPO_INICIO COMANDOS ESCOPO_FIM" << endl;	//debug
+			cout << "Regra BLOCO : COMANDOS" << endl;	//debug
 			string declar = contextStack.begin()->declar;
 			desempContexto();
-				
-			$$.traducao = ident() + "{" + declar + "\n" + $2.traducao + ident() + "}";
+			
+			//$$.traducao = "";
+			$$.traducao = ident() + "{\n" + declar + "\n" + $2.traducao + ident() + "}";
 			$$.label = "";
 		}
 		;
 			
-ESCOPO_INICIO	:	TK_BLOCO_ABRIR
+ESCOPO_INICIO	:	TK_BLOCO_ABRIR TK_DOTS
 				{
 					cout << "Regra ESCOPO_INICIO : TK_BLOCO_ABRIR" << endl;	//debug
 					empContexto();
@@ -71,7 +71,9 @@ ESCOPO_INICIO	:	TK_BLOCO_ABRIR
 ESCOPO_FIM	:	TK_BLOCO_FECHAR
 			{
 				cout << "Regra ESCOPO_FIM : TK_BLOCO_FECHAR" << endl;	//debug
-			};
+			}
+			|
+			;
 
 
 LOOP_INICIO	:{
@@ -99,6 +101,7 @@ COMANDOS	: COMANDO COMANDOS
 			}
 			|
 			{
+				$$.traducao = "";
 				cout << "Regra COMANDOS : vazio" << endl;
 			}	
 			;
@@ -106,6 +109,7 @@ COMANDOS	: COMANDO COMANDOS
 COMANDO 	: E
 			{
 				cout << "Regra COMANDO : " << $1.label << endl;
+				$$.traducao = $1.traducao;
 			}
 
 			| DECLARACAO
@@ -116,7 +120,7 @@ COMANDO 	: E
 			
 			| BLOCO
 			{
-				cout << "Regra COMANDO : BLOCO" << endl;
+				cout << "Regra COMANDO : ESCOPO_INICIO BLOCO ESCOPO_FIM" << endl;
 				$$.traducao = $1.traducao;
 			}
 			
@@ -405,23 +409,22 @@ SINAL_DUPL	: TK_2MAIS
 			}
 			;
 			
-CONTROLE	: TK_IF E TK_DOTS BLOCO
+CONTROLE	: TK_IF E BLOCO
 			{
 				//cout << $2.tipo->label << endl;	//debug
-				cout << "Regra CONTROLE : TK_IF E TK_DOTS BLOCO" << endl;	//debug
+				cout << "Regra CONTROLE : TK_IF E BLOCO" << endl;	//debug
 				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
 
 				declararLocal(&tipo_int, var);
-					
-				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
-				$$.traducao += $4.traducao + fim+":\n";
+				
+				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim) + $3.traducao + ident() + fim+":\n";
 			}
-			| TK_IF E TK_DOTS BLOCO CONTROLE_ALT
+			| TK_IF E BLOCO CONTROLE_ALT
 			{
-				cout << "Regra CONTROLE : TK_IF E TK_DOTS BLOCO CONTROLE_ALT" << endl;	//debug
+				cout << "Regra CONTROLE : TK_IF E BLOCO CONTROLE_ALT" << endl;	//debug
 
 				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
 
@@ -430,8 +433,8 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 
 				declararLocal(&tipo_int, var);
 
-				$$.traducao = $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
-				$$.traducao += $4.traducao + newLine("goto " + $5.label) + fim + ":\n" + $5.traducao;
+				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao += $3.traducao + newLine("goto " + $4.label) + ident() + fim + ":\n" + $4.traducao;
 				
 			}
 
@@ -443,47 +446,18 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 
 			;
 
-CONTROLE_ALT: TK_ELSE TK_IF E TK_DOTS BLOCO
+CONTROLE_ALT: TK_ELSE CONTROLE
 			{
-				cout << "Regra CONTROLE_ALT : TK_ELSE TK_IF E TK_DOTS BLOCO" << endl;	//debug
-				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do if DEVE ser bool");
-
-				string var = generateVarLabel();
-				string fim = generateLabel();
-
-				declararLocal(&tipo_int, var);
-
-				$$.label = fim;
-				$$.traducao = $3.traducao + newLine(var + " = !" + $3.label) + newLine("if (" + var + ") goto " + fim);
-				$$.traducao += $5.traducao + fim + ":\n" + "\n";
-
-			}
-
-			| TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT
-			{
-				cout << "Regra CONTROLE_ALT : TK_ELSE TK_IF E TK_DOTS BLOCO CONTROLE_ALT" << endl;	//debug
-				if($3.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do else if DEVE ser bool");
-
-				string var = generateVarLabel();
-				string fim = generateLabel();
-
-				declararLocal(&tipo_int, var);
-
-				$$.label = $6.label;
-				$$.traducao = $3.traducao + newLine(var + " = !" + $3.label) + newLine("if (" + var + ") goto " + fim);
-				$$.traducao += $5.traducao + newLine("goto " + $6.label) + fim + ":\n" + $6.traducao + "\n";
-
-			}
-
-			| TK_ELSE TK_DOTS BLOCO
-			{
-				cout << "Regra CONTROLE_ALT : TK_ELSE TK_DOTS BLOCO" << endl;	//debug
+				cout << "Regra CONTROLE_ALT : TK_ELSE CONTROLE" << endl;	//debug
 				$$.label = generateLabel();
-				$$.traducao = $3.traducao + $$.label + ":\n";
-
+				$$.traducao = $2.traducao + ident() + $$.label + ":\n"; 
 			}
-
-
+			| TK_ELSE BLOCO
+			{
+				cout << "Regra CONTROLE_ALT : TK_ELSE BLOCO" << endl;	//debug
+				$$.label = generateLabel();
+				$$.traducao = $2.traducao + $$.label + ":\n";
+			}
 			;
 
 LOOP 		: TK_FOR DECLARACAO ';' E ';' INCREMENTOS TK_DOTS BLOCO
@@ -582,6 +556,9 @@ PRINT		: TK_PRINT PRINT_ALT
 PRINT_ALT	: E	TK_ENDL
 			{
 				cout << "Regra PRINT_ALT : E TK_ENDL" << endl;	//debug
+				if (findVar($1.label) == NULL) {
+					yyerror("Variavel " + $1.label + " nao declarada");
+				}
 				$$.traducao = $1.traducao;
 				$$.label = " << " + $1.label + " << endl";
 			}
@@ -589,6 +566,9 @@ PRINT_ALT	: E	TK_ENDL
 			| E ',' PRINT_ALT
 			{
 				cout << "Regra PRINT_ALT : E , PRINT_ALT" << endl;	//debug
+				if (findVar($1.label) == NULL) {
+					yyerror("Variavel " + $1.label + " nao declarada");
+				}
 				$$.traducao = $1.traducao + $3.traducao;
 				$$.label = " << " + $1.label + " << \" \"" + $3.label;
 			}

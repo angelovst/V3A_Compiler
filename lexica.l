@@ -31,8 +31,8 @@ ID {LETRA}({LETRA}|{INT})*
 "list"		{return TK_TIPO_LIST;}
 
 "main"		{return TK_MAIN;}
-"{"			{return TK_BLOCO_ABRIR;}
-"}"			{return TK_BLOCO_FECHAR;}
+"do"			{return TK_BLOCO_ABRIR;}
+"end"			{return TK_BLOCO_FECHAR;}
 "if"		{return TK_IF;}
 "else"		{return TK_ELSE;}
 "for"		{return TK_FOR;}
