@@ -2,16 +2,23 @@
 #include <iostream>
 #include <string>
 #include <sstream>
+#include <fstream>
 #include <algorithm>
+#include <stdio.h>
+#include <stdlib.h>
 #include "helper.h"
 #define YYSTYPE atributos
+#define OUTPUT_INTERMEDIARIO "-i"
 
 using namespace std;
 
 int yylex(void);
 void yyerror(string);
 
-int yyparse();
+int yyparse (void);
+
+fstream output;
+FILE *input;
 
 %}
 
@@ -36,7 +43,7 @@ int yyparse();
 S 			: COMANDOS ESCOPO_FIM
 			{
 				cout << "Regra S : COMANDOS ESCOPO_FIM" << endl;	//debug
-				cout << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<string.h>\n#include<stdio.h>\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -622,18 +629,61 @@ TIPO 		: TK_TIPO_INT
 
 #include "lex.yy.c"
 
-int main( int argc, char* argv[] )
-{
-	empContexto();
-	cout << "parsing" << endl;	//debug
-	yyparse();
-	cout << "parsed" << endl;	//debug
-
-	return 0;
+void closeFiles (void) {
+	fclose(input);
+	output.close();
 }
 
-void yyerror( string MSG )
-{
+int main (int argc, char **args) {
+	string inputFileName, outputFileName, outputCompiled;
+
+	if (argc < 3) {
+		cout << "Especifique os arquivos de entrada e saida" << endl;
+		return 1;
+	}
+	
+	if (string(args[1]) == OUTPUT_INTERMEDIARIO) {
+		inputFileName = args[2];
+		outputFileName = string(args[3]) + ".c";
+	} else {
+		inputFileName = args[1];
+		outputCompiled = args[2];
+		outputFileName = outputCompiled + ".c";
+	}
+	
+	input = fopen(inputFileName.c_str(), "r");
+	if (input == NULL) {
+		cout << "Arquivo \"" << inputFileName << "\" nao pode ser aberto. Certifique-se de que o arquivo existe" << endl;
+		return 2;
+	}
+	yyin = input;
+	
+	output.open(outputFileName, fstream::out | fstream::trunc);
+	if (output.fail()) {
+		fclose(input);
+		cout << "Arquivo \"" << outputFileName << "\" nao pode ser aberto" << endl;
+		return 3;
+	}
+	
+	empContexto();
+	//cout << "parsing" << endl;	//debug
+	yyparse();
+	//cout << "parsed" << endl;	//debug
+	
+	closeFiles();
+	if (string(args[1]) != OUTPUT_INTERMEDIARIO) {
+		string compile = "gcc " + outputFileName + " -o " + outputCompiled;
+		//system("stty -echo");
+		system(compile.c_str());
+		//system("stty echo");
+		remove(outputFileName.c_str());	
+	}	
+	return 0;
+	
+}
+
+void yyerror( string MSG ) {
 	cout << "Linha " << line << ": " << MSG << endl;
+	closeFiles();
 	exit (0);
 }

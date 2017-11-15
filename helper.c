@@ -181,7 +181,7 @@ string traducaoAtribuicao (void *args) {
 	lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
 	if (lvalue->tipo == NULL) {
-		cout << rvalue->tipo->label << endl;
+		//cout << rvalue->tipo->label << endl;	//debug
 		if (!declararLocal(rvalue->tipo, lvalue->label)) {
 			return VAR_ALREADY_DECLARED;
 		}
