@@ -1,7 +1,7 @@
 # Compiler
 
 Chamada do compilador:
-	./<nome do programa> -<opcoes> <arquivo de entrada> <arquivo de saida>
+	./[nome do programa] -[opcoes] [arquivo de entrada] [arquivo de saida]
 	
-	opcoes:
+	[opcoes]:
 		i: escrever codigo intermediario no arquivo de saida
