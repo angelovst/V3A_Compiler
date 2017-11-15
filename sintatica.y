@@ -25,7 +25,7 @@ FILE *input;
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
-%token TK_DOTS TK_2MAIS TK_2MENOS
+%token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
 %start S
@@ -37,45 +37,41 @@ FILE *input;
 %left TK_PLUS TK_MINUS
 %left TK_MULT TK_DIV TK_MOD
 %right TK_2MAIS TK_2MENOS
+%left TK_BLOCO_ABRIR
 
 %%
 
-S 			: COMANDOS ESCOPO_FIM
+S 			: COMANDOS
 			{
-				cout << "Regra S : COMANDOS ESCOPO_FIM" << endl;	//debug
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << $2.traducao << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
+				cout << "Regra S : COMANDOS" << endl;	//debug
+				string globalDeclar = contextStack.begin()->declar;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
 
-BLOCO	: TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM
-			{
-				cout << "Regra BLOCO : TK_BLOCO_ABRIR COMANDOS ESCOPO_FIM" << endl;	//debug
-				empContexto();
+BLOCO	: ESCOPO_INICIO COMANDOS ESCOPO_FIM
+		{
+			cout << "Regra BLOCO : ESCOPO_INICIO COMANDOS ESCOPO_FIM" << endl;	//debug
+			string declar = contextStack.begin()->declar;
+			desempContexto();
 				
-				$$.traducao = "{\n" + $3.traducao + "\n" + $2.traducao + "}";
-				$$.label = "";
-			}
-			;
+			$$.traducao = ident() + "{" + declar + "\n" + $2.traducao + ident() + "}";
+			$$.label = "";
+		}
+		;
+			
+ESCOPO_INICIO	:	TK_BLOCO_ABRIR
+				{
+					cout << "Regra ESCOPO_INICIO : TK_BLOCO_ABRIR" << endl;	//debug
+					empContexto();
+				}
+				;
 			
 ESCOPO_FIM	:	TK_BLOCO_FECHAR
 			{
-				
-				string declar = contextStack.begin()->declar;
-				//cout << "declaracoes " << declar << endl;	//debug
-				desempContexto();
-				$$.label = "";
-				$$.traducao = declar;
-			}
-			|
-			{
-				string declar = contextStack.begin()->declar;
-				//cout << "declaracoes " << declar << endl;	//debug
-				desempContexto();
-				$$.label = "";
-				$$.traducao = declar;			
-			}
-			;
+				cout << "Regra ESCOPO_FIM : TK_BLOCO_FECHAR" << endl;	//debug
+			};
 
 
 LOOP_INICIO	:{
@@ -107,14 +103,14 @@ COMANDOS	: COMANDO COMANDOS
 			}	
 			;
 
-COMANDO 	: E TK_ENDL
+COMANDO 	: E
 			{
 				cout << "Regra COMANDO : " << $1.label << endl;
 			}
 
-			| DECLARACAO TK_ENDL
+			| DECLARACAO
 			{
-				cout << "Regra COMANDO : DECLARACAO TK_ENDL" << endl;
+				cout << "Regra COMANDO : DECLARACAO" << endl;
 				$$.traducao = $1.traducao;
 			}
 			
@@ -135,10 +131,10 @@ COMANDO 	: E TK_ENDL
 				cout << "Regra COMANDO : LOOP_ALT TK_ENDL" << endl;
 				$$.traducao = $1.traducao;
 			}
-			| PRINT TK_ENDL
+			| PRINT
 			{
-				cout << "Regra COMANDO : PRINT TK_ENDL" << endl;
-				$$.traducao = $1.traducao + " << endl;\n";
+				cout << "Regra COMANDO : PRINT" << endl;
+				$$.traducao = $1.traducao;
 			}
 			| TK_ENDL
 			;
@@ -420,7 +416,7 @@ CONTROLE	: TK_IF E TK_DOTS BLOCO
 
 				declararLocal(&tipo_int, var);
 					
-				$$.traducao = $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
+				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
 				$$.traducao += $4.traducao + fim+":\n";
 			}
 			| TK_IF E TK_DOTS BLOCO CONTROLE_ALT
@@ -579,22 +575,22 @@ LOOP_ALT	: TK_BREAK
 PRINT		: TK_PRINT PRINT_ALT
 			{
 				cout << "Regra PRINT : TK_PRINT PRINT_ALT" << endl;	//debug
-				$$.traducao = $2.traducao + "\tcout" + $2.label;
+				$$.traducao = $2.traducao + newLine("cout" + $2.label);
 			}
 			;
 			
-PRINT_ALT	: E
+PRINT_ALT	: E	TK_ENDL
 			{
-				cout << "Regra PRINT_ALT : E" << endl;	//debug
+				cout << "Regra PRINT_ALT : E TK_ENDL" << endl;	//debug
 				$$.traducao = $1.traducao;
-				$$.label = " << " + $1.label;
+				$$.label = " << " + $1.label + " << endl";
 			}
 
 			| E ',' PRINT_ALT
 			{
 				cout << "Regra PRINT_ALT : E , PRINT_ALT" << endl;	//debug
 				$$.traducao = $1.traducao + $3.traducao;
-				$$.label = " << " + $1.label + $3.label;
+				$$.label = " << " + $1.label + " << \" \"" + $3.label;
 			}
 			;
 
@@ -669,6 +665,7 @@ int main (int argc, char **args) {
 	//cout << "parsing" << endl;	//debug
 	yyparse();
 	//cout << "parsed" << endl;	//debug
+	desempContexto();
 	
 	closeFiles();
 	if (string(args[1]) != OUTPUT_INTERMEDIARIO) {
