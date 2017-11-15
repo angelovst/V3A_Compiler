@@ -23,7 +23,7 @@ FILE *input;
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
-%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_FROM TK_TO TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
@@ -74,25 +74,6 @@ ESCOPO_FIM	:	TK_BLOCO_FECHAR
 			}
 			|
 			;
-
-
-LOOP_INICIO	:{
-				cout << "Regra LOOP_INICIO : vazio" << endl;	//debug
-				empLoop();
-				empContexto();
-				
-				$$.traducao = "";
-				$$.label = "";
-			};
-			
-LOOP_FIM	:	{
-				cout << "Regra LOOP_FIM : vazio" << endl;	//debug
-				desempLoop();
-				desempContexto();
-				
-				$$.traducao = "";
-				$$.label = "";
-			};
 
 COMANDOS	: COMANDO COMANDOS
 			{
@@ -395,6 +376,7 @@ INCREMENTOS	: TK_ID SINAL_DUPL
 
 			}
 			;
+			
 SINAL_DUPL	: TK_2MAIS
 			{
 				cout << "Regra SINAL_DUPL : TK_2MAIS" << endl;	//debug
@@ -443,7 +425,6 @@ CONTROLE	: TK_IF E BLOCO
 				cout << "Regra CONTROLE : LOOP_INICIO LOOP LOOP_FIM" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
-
 			;
 
 CONTROLE_ALT: TK_ELSE CONTROLE
@@ -459,45 +440,122 @@ CONTROLE_ALT: TK_ELSE CONTROLE
 				$$.traducao = $2.traducao + $$.label + ":\n";
 			}
 			;
-
-LOOP 		: TK_FOR DECLARACAO ';' E ';' INCREMENTOS TK_DOTS BLOCO
+		
+LOOP_INICIO	:
 			{
-				cout << "Regra LOOP : TK_FOR DECLARACAO ; E ; INCREMENTOS TK_DOTS BLOCO" << endl;	//debug
-				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao DEVE ser bool");
+				cout << "Regra LOOP_INICIO : vazio" << endl;	//debug
+				empLoop();
+			}
+			;
+			
+FOR	: TK_FOR
+	{
+		cout << "Regra FOR : TK_FOR" << endl;	//debug
+		empLoop();
+	}
+	;
 
-				string var = generateVarLabel();
-				loopLabel* loop = getLoop(1);
+WHILE	: TK_WHILE
+		{
+			cout << "Regra WHILE : TK_WHILE" << endl;	//debug
+			empLoop();
+		}
+		;
 
-				declararLocal(&tipo_int, var);
-
-				$$.traducao = $2.traducao + "\n" + ident() + loop->inicio + ":\n" + $4.traducao + newLine(var + " = !" + $4.label);
-				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $8.traducao + loop->progressao + ":\n\n" + $6.traducao;
-				$$.traducao += newLine("goto " + loop->inicio) + loop->fim + ":\n";
+LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
+			{
+				cout << "Regra LOOP : TK_ID TK_FROM E TK_TO E BLOCO" << endl;	//debug
+				if ($4.tipo != &tipo_int && $4.tipo != &tipo_float) yyerror("Tipo da expressao deve ser int ou float");
+				if ($6.tipo != &tipo_int && $6.tipo != &tipo_float) yyerror("Tipo da expressao deve ser int ou float");
+				
+				Tipo *i;
+				string iLabel;
+				string limitInf, limitSup; 
+				string check = generateVarLabel();
+				string inc = generateVarLabel();
+				string checkElse = generateLabel();
+				string checkEnd = generateLabel();
+				
+				//cout << "declaring vars" << endl;	//debug
+				i = findVar($2.label);
+				if (i == NULL) {
+					$2.tipo = resolverTipo($4.tipo, $6.tipo);
+					declararLocal($2.tipo, $2.label);
+				} else if (i != &tipo_int && i != &tipo_float) {
+					yyerror("Variavel " + $2.label + " deveria ser dos tipos int ou float");
+				} else {
+					$2.tipo = i;
+				}
+				declararLocal(&tipo_bool, check);
+				declararLocal(resolverTipo($4.tipo, $6.tipo), inc);
+				
+				LoopLabel* loop = getLoop(0);
+				
+				$$.traducao = $4.traducao + $6.traducao + "\n";
+				
+				//cout << "casting vars" << endl;	//debug
+				//escrever casts caso necessarios
+				$$.traducao += implicitCast(&$4, &$6, &limitInf, &limitSup);
+				//cout << "limits casted" << endl;	//debug
+				if (limitInf != $4.label) {
+					//cout << "if" << endl;
+					$$.traducao += implicitCast(&$2, &$6, &iLabel, &limitSup);
+				} else {
+					//cout << "else" << endl;
+					$$.traducao += implicitCast(&$2, &$4, &iLabel, &limitInf);
+				}
+				//cout << "counting var casted" << endl;	//debug
+				
+				//cout << "checking increment" << endl;	//debug
+				//checar se incremento deve ser positivo ou negativo
+				$$.traducao += ident() + "//CHECAR VARIAVEL DE INCREMENTO\n" + newLine(check + " = " + limitInf + "<" + limitSup);
+				$$.traducao += newLine("if (" + check + ") goto " + checkElse);
+				//incremento negatvo caso limitInf > limitSup
+				$$.traducao += "\t" + newLine(inc + " = " + "-1");
+				$$.traducao += "\t" + newLine("goto " + checkEnd);
+				//incremento positivo caso limitInf < limitSup
+				$$.traducao += ident() + checkElse + ":\n";
+				$$.traducao += "\t" + newLine(inc + " = " + "1");
+				$$.traducao += ident() + checkEnd + ":\n\n";
+				
+				//cout << "translating loop" << endl;	//debug
+				$$.traducao += newLine(iLabel + " = " + limitInf);	//inicializar variavel de contagem
+				//escrever bloco
+				$$.traducao += ident() + loop->inicio + ":\n";
+				$$.traducao += newLine(check + " = " + iLabel + ">=" + limitSup);
+				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $7.traducao + ident() + loop->progressao + ":\n";
+				//incrementar variavel de contagem
+				$$.traducao += newLine(iLabel + " = " + iLabel + "+" + inc);
+				$$.traducao += newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				desempLoop();
+				//cout << "loop translated" << endl;	//debug
 
 			}
 
-			| TK_WHILE E TK_DOTS BLOCO 
+			| WHILE E BLOCO 
 			{
-				cout << "Regra LOOP : TK_WHILE E TK_DOTS BLOCO" << endl;	//debug
+				cout << "Regra LOOP : TK_WHILE E BLOCO" << endl;	//debug
 				if ($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do while DEVE ser bool");
 				string var = generateVarLabel();
-				loopLabel* loop = getLoop(1);
+				LoopLabel* loop = getLoop(0);
 					
-				declararLocal(&tipo_int, var);
+				declararLocal(&tipo_bool, var);
 					
-				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
-				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $4.traducao + newLine("goto " + loop->inicio) + loop->fim + ":\n";
+				$$.traducao = ident() + loop->inicio + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
+				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $3.traducao + newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				desempLoop();
 				
 			}
 
-			| TK_DO BLOCO TK_WHILE E TK_ENDL {
+			| BLOCO TK_WHILE E TK_ENDL {
 				cout << "Regra LOOP : TK_DO BLOCO TK_WHILE E TK_ENDL" << endl;	//debug
 				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
 
-				loopLabel* loop = getLoop(1);
+				LoopLabel* loop = getLoop(0);
 
-				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $4.traducao + $2.traducao + newLine("if (" + $4.label + ") goto " + loop->inicio);
+				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $3.traducao + $1.traducao + newLine("if (" + $3.label + ") goto " + loop->inicio);
 				$$.traducao += loop->fim + ":\n";
+				desempLoop();
 
 			}
 			;
@@ -505,7 +563,7 @@ LOOP 		: TK_FOR DECLARACAO ';' E ';' INCREMENTOS TK_DOTS BLOCO
 LOOP_ALT	: TK_BREAK
 			{
 				cout << "Regra LOOP_ALT : TK_BREAK" << endl;	//debug
-				loopLabel* loop = getLoop(1);
+				LoopLabel* loop = getLoop(0);
 				
 				if (loop == nullptr) yyerror("Break deve ser usado dentro de um loop");
 
@@ -514,7 +572,7 @@ LOOP_ALT	: TK_BREAK
 			}
 			| TK_BREAK TK_ALL {
 				cout << "Regra LOOP_ALT : TK_BREAK TK_ALL" << endl;	//debug
-				loopLabel* loop = getOuterLoop();
+				LoopLabel* loop = getOuterLoop();
 				
 				if (loop == nullptr) yyerror("Break all deve ser usado dentro de um loop");
 
@@ -522,25 +580,25 @@ LOOP_ALT	: TK_BREAK
 			}
 			| TK_BREAK '(' TK_INT ')' {
 				cout << "Regra LOOP_ALT : TK_BREAK ( TK_INT )" << endl;	//debug
-				loopLabel* loop = getLoop(stoi($3.label));
+				LoopLabel* loop = getLoop(stoi($3.label));
 				
-				if (loop == nullptr) yyerror("Break com args deve ser usado dentro de um loop\nou\nargumento invalido");
+				if (loop == NULL) yyerror("Break com deve ser usado dentro de um loop");
 
-				$$.traducao = "\tgoto " + loop->fim + ";\n";
+				$$.traducao = newLine("goto " + loop->fim);
 			}
 			| TK_CONTINUE {
 				cout << "Regra LOOP_ALT : TK_CONTINUE" << endl;	//debug
-				loopLabel* loop = getLoop(1);
+				LoopLabel* loop = getLoop(0);
 				
-				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+				if (loop == NULL) yyerror("Continue deve ser usado dentro de um loop");
 
 				$$.traducao = newLine("goto " + loop->progressao);
 			}
 			| TK_CONTINUE TK_ALL {
 				cout << "Regra LOOP_ALT : TK_CONTINUE TK_ALL" << endl;	//debug
-				loopLabel* loop = getOuterLoop();
+				LoopLabel* loop = getOuterLoop();
 				
-				if (loop == nullptr) yyerror("Continue deve ser usado dentro de um loop");
+				if (loop == NULL) yyerror("Continue deve ser usado dentro de um loop");
 
 				$$.traducao = newLine("goto " + loop->progressao);
 			}
@@ -549,7 +607,7 @@ LOOP_ALT	: TK_BREAK
 PRINT		: TK_PRINT PRINT_ALT
 			{
 				cout << "Regra PRINT : TK_PRINT PRINT_ALT" << endl;	//debug
-				$$.traducao = $2.traducao + newLine("cout" + $2.label);
+				$$.traducao = $2.traducao + newLine("std::cout" + $2.label);
 			}
 			;
 			
@@ -560,7 +618,7 @@ PRINT_ALT	: E	TK_ENDL
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao;
-				$$.label = " << " + $1.label + " << endl";
+				$$.label = " << " + $1.label + " << std::endl";
 			}
 
 			| E ',' PRINT_ALT
@@ -649,7 +707,7 @@ int main (int argc, char **args) {
 	
 	closeFiles();
 	if (string(args[1]) != OUTPUT_INTERMEDIARIO) {
-		string compile = "gcc " + outputFileName + " -o " + outputCompiled;
+		string compile = "g++ -std=c++11 " + outputFileName + " -o " + outputCompiled;
 		//system("stty -echo");
 		system(compile.c_str());
 		//system("stty echo");

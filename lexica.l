@@ -36,6 +36,8 @@ ID {LETRA}({LETRA}|{INT})*
 "if"		{return TK_IF;}
 "else"		{return TK_ELSE;}
 "for"		{return TK_FOR;}
+"from"		{return TK_FROM;}
+"to"		{return TK_TO;}
 "do"		{return TK_DO;}
 "while"		{return TK_WHILE;}
 "break"		{return TK_BREAK;}

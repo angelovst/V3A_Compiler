@@ -20,9 +20,17 @@ std::list<Context> contextStack;
 unsigned int contextDepth = 0;
 
 //Pilha de labels de loop
-std::vector<loopLabel> loopMap;
+std::list<LoopLabel> loopStack;
 
 using namespace std;
+
+string ident (void) {
+	std::string identation = "";
+	for (unsigned int i = 0; i < contextDepth; i++) {
+		identation += "\t";
+	}
+	return identation;	
+}
 
 string newLine (const string &line) {
 	return ident() + line + ";\n";
@@ -110,41 +118,32 @@ void desempContexto (void) {
 	contextDepth--;
 }
 
-string ident (void) {
-	std::string identation = "";
-	for (unsigned int i = 0; i < contextDepth; i++) {
-		identation += "\t";
+//LOOP
+void empLoop (void) {
+	loopStack.push_front({generateLabel(), generateLabel(), generateLabel()});
+}
+
+void desempLoop (void) {
+	loopStack.pop_front();
+}
+
+LoopLabel* getLoop (unsigned int out) {
+	list<LoopLabel>::iterator it = loopStack.begin();
+	unsigned int i = 0;
+	
+	while (i < out && it != loopStack.end()) {
+		i++;
+		it++;
 	}
-	return identation;	
+	
+	return (it == loopStack.end()) ? NULL : &(*it);
 }
 
-//FUNCOES PARA CONTROLE DOS BLOCOS DE LOOP
-void empLoop() {
-	string inicio = generateLabel();
-	string progressao = generateLabel();
-	string fim = generateLabel();
-	loopLabel novo = {inicio, progressao, fim};
-	loopMap.push_back(novo);
-}
-
-void desempLoop() {
-	return loopMap.pop_back();
-}
-
-loopLabel* getLoop(int tamLoop) {
-	if (loopMap.size() && tamLoop <= loopMap.size() && tamLoop > 0) {
-		//cout << loopMap.size() << " " << tamLoop << endl;
-		return &loopMap[loopMap.size() - tamLoop];
+LoopLabel* getOuterLoop (void) {
+	if (loopStack.size() > 0) {
+		return &(*(loopStack.end()--));
 	} else {
-		return nullptr;
-	}
-}
-
-loopLabel* getOuterLoop() {
-	if (loopMap.size()) {
-		return &loopMap[0];
-	} else {
-		return nullptr;
+		return NULL;
 	}
 }
 

@@ -42,6 +42,12 @@ typedef struct _Tipo {
 	std::vector<struct _Tipo*> *argumentos;	//usado em funcoes
 } Tipo;
 
+typedef struct _LoopLabel {
+	std::string inicio;		
+	std::string progressao;
+	std::string fim;
+} LoopLabel;
+
 typedef struct _Context {
 	std::map<std::string, Tipo*> vars;
 	std::string declar;
@@ -53,12 +59,7 @@ typedef struct atributos {
 	Tipo *tipo;
 } atributos;
 
-typedef struct loopLabel {
-	std::string inicio;		
-	std::string progressao;
-	std::string fim;
-} loopLabel;
-
+std::string ident (void);
 std::string newLine (const std::string &line);	//escreve nova linha do codigo intermediario
 
 //VARIAVEIS
@@ -71,13 +72,12 @@ bool declararLocal (Tipo *tipo, std::string &label);
 //CONTEXTO
 void empContexto (void);
 void desempContexto (void);
-std::string ident (void);
 
 //LOOP
-void empLoop();
-void desempLoop();
-loopLabel* getLoop(int tamLoop);
-loopLabel* getOuterLoop();
+void empLoop (void);
+void desempLoop (void);
+LoopLabel* getLoop (unsigned int out);
+LoopLabel* getOuterLoop (void);
 std::string generateLabel (void);
 
 //FUNCOES DE OPERADORES
@@ -90,6 +90,9 @@ extern unsigned int line;	//linha na qual o parser esta, usado para erros
 //Pilha de variaveis
 extern unsigned int contextDepth;
 extern std::list<Context> contextStack;
+
+//Pilha de labels
+extern std::list<LoopLabel> loopStack;
 
 //String para declaracao de var
 extern std::string varDeclar;
@@ -105,8 +108,5 @@ extern Tipo tipo_ref;
 extern Tipo tipo_arithmetic_operator;
 extern Tipo tipo_logic_operator;
 extern Tipo tipo_atrib_operator;
-
-//Pilha de labels de loop
-extern std::vector<loopLabel> loopMap;
 
 #endif
