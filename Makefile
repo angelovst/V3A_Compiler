@@ -1,5 +1,6 @@
 CC = g++ -std=c++11
 OBJS = helper.o list.o
+GTK_PATH = /usr/share/gtksourceview-3.0/language-specs/
 
 all: $(OBJS)
 		lex lexica.l
@@ -8,6 +9,9 @@ all: $(OBJS)
 		
 %.o: %.c
 	$(CC) -c $^
+	
+install_highlight:
+	sudo cp -i v3a.lang $(GTK_PATH)
 		
 clean:
 	rm -f y.tab.c

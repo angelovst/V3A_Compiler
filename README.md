@@ -1,5 +1,10 @@
 ## Compiler
 
+Instalando highlights para a linguagem:
+
+O arquivo v3a.lang pode ser adicionado juntamente aos outros arquivos GTKSourceView do seu editor de texto para que este possa realcar codigos escritos na lingugem.
+O comando *make install_highlight* pode ser usado para instalar o arquivo no caminho especificado em *GTK_PATH* no Makefile
+
 Chamada do compilador:
 	./[nome do programa] -[opcoes] [arquivo de entrada] [arquivo de saida]
 	
