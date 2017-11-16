@@ -68,6 +68,7 @@ std::string generateVarLabel (void);
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
 Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno entre uma operacao envolvendo a e b
 bool declararLocal (Tipo *tipo, std::string &label);
+bool isNumero (Tipo *tipo);
 
 //CONTEXTO
 void empContexto (void);

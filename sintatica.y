@@ -23,7 +23,7 @@ FILE *input;
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
-%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_FROM TK_TO TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
@@ -440,18 +440,13 @@ CONTROLE_ALT: TK_ELSE CONTROLE
 				$$.traducao = $2.traducao + $$.label + ":\n";
 			}
 			;
-		
-LOOP_INICIO	:
-			{
-				cout << "Regra LOOP_INICIO : vazio" << endl;	//debug
-				empLoop();
-			}
-			;
 			
 FOR	: TK_FOR
 	{
 		cout << "Regra FOR : TK_FOR" << endl;	//debug
 		empLoop();
+		$$.traducao = "\n" + ident() + "//FOR LOOP\n" + ident() + "{\n";
+		empContexto();	//separar expressoes dentro da declaracao do for do resto
 	}
 	;
 
@@ -459,56 +454,61 @@ WHILE	: TK_WHILE
 		{
 			cout << "Regra WHILE : TK_WHILE" << endl;	//debug
 			empLoop();
+			$$.traducao = "\n" + ident() + "//WHILE LOOP\n" + ident() + "{\n";
+			empContexto();	//separar expressoes dentro da declaracao do for do resto
 		}
 		;
 
 LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 			{
 				cout << "Regra LOOP : TK_ID TK_FROM E TK_TO E BLOCO" << endl;	//debug
-				if ($4.tipo != &tipo_int && $4.tipo != &tipo_float) yyerror("Tipo da expressao deve ser int ou float");
-				if ($6.tipo != &tipo_int && $6.tipo != &tipo_float) yyerror("Tipo da expressao deve ser int ou float");
+				if (!isNumero($4.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
+				if (!isNumero($6.tipo)) yyerror("Expressao do limite superior deve retornar numero");
 				
-				Tipo *i;
+				Tipo *i, *final;
+				atributos *castTo;
 				string iLabel;
 				string limitInf, limitSup; 
 				string check = generateVarLabel();
 				string inc = generateVarLabel();
+				string prevValue = generateVarLabel();
 				string checkElse = generateLabel();
 				string checkEnd = generateLabel();
 				
-				//cout << "declaring vars" << endl;	//debug
+				//cout << "declaring vars" << endl;	//debug;
+				final = resolverTipo($4.tipo, $6.tipo);
+				castTo = (final == $4.tipo) ? &$4 : &$6;
+				
 				i = findVar($2.label);
 				if (i == NULL) {
-					$2.tipo = resolverTipo($4.tipo, $6.tipo);
+					$2.tipo = final;
 					declararLocal($2.tipo, $2.label);
-				} else if (i != &tipo_int && i != &tipo_float) {
-					yyerror("Variavel " + $2.label + " deveria ser dos tipos int ou float");
+				} else if (!isNumero(i)) {
+					yyerror("Variavel " + $2.label + " deve armazenar numero");
 				} else {
 					$2.tipo = i;
+					final = resolverTipo(final, $2.tipo);
+					castTo = (final == $2.tipo) ? &$2 : castTo;
 				}
 				declararLocal(&tipo_bool, check);
-				declararLocal(resolverTipo($4.tipo, $6.tipo), inc);
+				declararLocal(final, inc);
+				declararLocal(final, prevValue);
 				
 				LoopLabel* loop = getLoop(0);
 				
-				$$.traducao = $4.traducao + $6.traducao + "\n";
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
+				$$.traducao += $4.traducao + $6.traducao;
 				
 				//cout << "casting vars" << endl;	//debug
 				//escrever casts caso necessarios
-				$$.traducao += implicitCast(&$4, &$6, &limitInf, &limitSup);
-				//cout << "limits casted" << endl;	//debug
-				if (limitInf != $4.label) {
-					//cout << "if" << endl;
-					$$.traducao += implicitCast(&$2, &$6, &iLabel, &limitSup);
-				} else {
-					//cout << "else" << endl;
-					$$.traducao += implicitCast(&$2, &$4, &iLabel, &limitInf);
-				}
+				$$.traducao += implicitCast(castTo, &$2, &castTo->label, &iLabel);
+				$$.traducao += implicitCast(castTo, &$4, &castTo->label, &limitInf);
+				$$.traducao += implicitCast(castTo, &$6, &castTo->label, &limitSup);
 				//cout << "counting var casted" << endl;	//debug
 				
 				//cout << "checking increment" << endl;	//debug
 				//checar se incremento deve ser positivo ou negativo
-				$$.traducao += ident() + "//CHECAR VARIAVEL DE INCREMENTO\n" + newLine(check + " = " + limitInf + "<" + limitSup);
+				$$.traducao += ident() + "//checar variavel de incremento\n" + newLine(check + " = " + limitInf + "<" + limitSup);
 				$$.traducao += newLine("if (" + check + ") goto " + checkElse);
 				//incremento negatvo caso limitInf > limitSup
 				$$.traducao += "\t" + newLine(inc + " = " + "-1");
@@ -521,16 +521,84 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				//cout << "translating loop" << endl;	//debug
 				$$.traducao += newLine(iLabel + " = " + limitInf);	//inicializar variavel de contagem
 				//escrever bloco
-				$$.traducao += ident() + loop->inicio + ":\n";
+				$$.traducao += ident() + "//laco de repeticao\n" + ident() + loop->inicio + ":\n" + newLine(prevValue + " = " + iLabel);
 				$$.traducao += newLine(check + " = " + iLabel + ">=" + limitSup);
-				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $7.traducao + ident() + loop->progressao + ":\n";
+				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $7.traducao + loop->progressao + ":\n";
 				//incrementar variavel de contagem
-				$$.traducao += newLine(iLabel + " = " + iLabel + "+" + inc);
+				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
 				$$.traducao += newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				
 				desempLoop();
+				desempContexto();
+				$$.traducao += ident() + "}\n";
 				//cout << "loop translated" << endl;	//debug
 
 			}
+			| FOR TK_ID TK_STEPPING E TK_FROM E TK_TO E BLOCO
+			{
+				cout << "Regra LOOP : TK_ID TK_STEPPING E TK_FROM E TK_TO E BLOCO" << endl;	//debug
+				if (!isNumero($4.tipo)) yyerror("Expressao do step deve retornar numero");
+				if (!isNumero($6.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
+				if (!isNumero($8.tipo)) yyerror("Expressao do limite superior deve retornar numero");
+				
+				Tipo *i, *final;
+				atributos *castTo;
+				string iLabel;
+				string limitInf, limitSup; 
+				string check = generateVarLabel();
+				string inc = generateVarLabel();
+				string prevValue = generateVarLabel();
+				
+				//cout << "declaring vars" << endl;	//debug;
+				final = resolverTipo($4.tipo, $6.tipo);
+				castTo = (final == $4.tipo) ? &$4 : &$6;
+				final = resolverTipo(final, $8.tipo);
+				castTo = (final == $8.tipo) ? &$8 : castTo;
+				
+				i = findVar($2.label);
+				if (i == NULL) {
+					$2.tipo = final;
+					declararLocal($2.tipo, $2.label);
+				} else if (!isNumero(i)) {
+					yyerror("Variavel " + $2.label + " deve armazenar numero");
+				} else {
+					$2.tipo = i;
+					final = resolverTipo(final, $2.tipo);
+					castTo = (final == $2.tipo) ? &$2 : castTo;
+				}
+				declararLocal(&tipo_bool, check);
+				declararLocal(final, inc);
+				declararLocal(final, prevValue);
+				
+				LoopLabel* loop = getLoop(0);
+				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
+				$$.traducao += $4.traducao + $6.traducao + $8.traducao;
+				
+				//cout << "casting vars" << endl;	//debug
+				//escrever casts caso necessarios
+				$$.traducao += implicitCast(castTo, &$2, &castTo->label, &iLabel);
+				$$.traducao += implicitCast(castTo, &$4, &castTo->label, &inc);
+				$$.traducao += implicitCast(castTo, &$6, &castTo->label, &limitInf);
+				$$.traducao += implicitCast(castTo, &$8, &castTo->label, &limitSup);
+				//cout << "counting var casted" << endl;	//debug
+				
+				//cout << "translating loop" << endl;	//debug
+				$$.traducao += newLine(iLabel + " = " + limitInf);	//inicializar variavel de contagem
+				//escrever bloco
+				$$.traducao += ident() + "//laco de repeticao\n" + ident() + loop->inicio + ":\n" + newLine(prevValue + " = " + iLabel);
+				$$.traducao += newLine(check + " = " + iLabel + ">=" + limitSup);
+				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $9.traducao + loop->progressao + ":\n";
+				//incrementar variavel de contagem
+				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
+				$$.traducao += newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				
+				desempLoop();
+				desempContexto();
+				$$.traducao += ident() + "}\n";
+				//cout << "loop translated" << endl;	//debug
+
+			} 
 
 			| WHILE E BLOCO 
 			{
@@ -540,10 +608,13 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				LoopLabel* loop = getLoop(0);
 					
 				declararLocal(&tipo_bool, var);
-					
-				$$.traducao = ident() + loop->inicio + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
+				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
+				$$.traducao += ident() + loop->inicio + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
 				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $3.traducao + newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
 				desempLoop();
+				desempContexto();
+				$$.traducao += ident() + "}\n";
 				
 			}
 

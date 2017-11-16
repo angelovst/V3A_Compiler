@@ -107,6 +107,15 @@ bool declararLocal (Tipo *tipo, std::string &label) {
 	return true;
 }
 
+bool isNumero (Tipo *tipo) {
+	if (tipo == NULL) {
+		return false;
+	} else if (tipo->subset % NUMBER_SUBSET == 0) {
+		return true;
+	}
+	return false;
+}
+
 //FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
 void empContexto (void) {
 	contextStack.push_front({map<string, Tipo*>(), ""});
