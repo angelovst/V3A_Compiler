@@ -25,6 +25,7 @@ FILE *input;
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
+%token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -83,46 +84,59 @@ COMANDOS	: COMANDO COMANDOS
 			|
 			{
 				$$.traducao = "";
-				cout << "Regra COMANDOS : vazio" << endl;
+				cout << "Regra COMANDOS : vazio" << endl;	//debug
 			}	
 			;
 
 COMANDO 	: E
 			{
-				cout << "Regra COMANDO : " << $1.label << endl;
+				cout << "Regra COMANDO : " << $1.label << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 
 			| DECLARACAO
 			{
-				cout << "Regra COMANDO : DECLARACAO" << endl;
+				cout << "Regra COMANDO : DECLARACAO" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			
 			| BLOCO
 			{
-				cout << "Regra COMANDO : ESCOPO_INICIO BLOCO ESCOPO_FIM" << endl;
+				cout << "Regra COMANDO : ESCOPO_INICIO BLOCO ESCOPO_FIM" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			
 			| CONTROLE
 			{
-				cout << "Regra COMANDO : CONTROLE" << endl;
+				cout << "Regra COMANDO : CONTROLE" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 
 			| LOOP_ALT TK_ENDL
 			{
-				cout << "Regra COMANDO : LOOP_ALT TK_ENDL" << endl;
+				cout << "Regra COMANDO : LOOP_ALT TK_ENDL" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			| PRINT
 			{
-				cout << "Regra COMANDO : PRINT" << endl;
+				cout << "Regra COMANDO : PRINT" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
+			| TK_COMENTARIO
+			{
+				cout << "Regra COMANDO : TK_COMENTARIO" << endl;	//debug
+				$$.traducao = $1.label;
+			}
+			| TK_COMENTARIO_MULT_LINHA
+			{
+				cout << "Regra COMANDO : TK_COMENTARIO_MULT_LINHA" << endl;	//debug
+				$$.traducao = $1.label + "\n";
+			}
 			| TK_ENDL
-			;
+			{
+				cout << "Regra COMANDO : TK_ENDL" << endl;	//debug
+			}
+			;				
 
 E 			: E OP_INFIX E {
 				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
@@ -261,7 +275,19 @@ DECLARACAO 	: TIPO TK_ID
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
 			}
-			;			
+			;
+DECLARACAO_NUMERO	: TK_ID
+					{
+						cout << "Regra DECLARACAO : TK_ID" << endl;
+						$$.tipo = findVar($1.label);
+						if ($$.tipo == NULL) {
+							$$.tipo = &tipo_int;
+							declararLocal($$.tipo, $1.label);
+						} else if (!isNumero($1.tipo)) {
+							yyerror($1.label + " era esperado armazenar numero");
+						}
+					}
+					;			
 			
 OP_INFIX	: TK_PLUS
 			{
@@ -355,7 +381,7 @@ INCREMENTOS	: TK_ID SINAL_DUPL
 
 				$$.label = var2;
 				$$.tipo = tipo;
-				$$.traducao =	newLine(var2 + " = " + $1.label + ";\n\t" + var1 + " = 1") + 
+				$$.traducao =	newLine(var2 + " = " + $1.label) + newLine(var1 + " = 1") + 
 								newLine(tipo->label + " = " + $1.label + $2.label + var1);
 			}
 			| SINAL_DUPL TK_ID
@@ -402,7 +428,7 @@ CONTROLE	: TK_IF E BLOCO
 
 				declararLocal(&tipo_int, var);
 				
-				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim) + $3.traducao + ident() + fim+":\n";
+				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim) + $3.traducao + newLine(fim+":");
 			}
 			| TK_IF E BLOCO CONTROLE_ALT
 			{
@@ -416,7 +442,7 @@ CONTROLE	: TK_IF E BLOCO
 				declararLocal(&tipo_int, var);
 
 				$$.traducao = "\n" + $2.traducao + newLine(var + " = !" + $2.label) + newLine("if (" + var + ") goto " + fim);
-				$$.traducao += $3.traducao + newLine("goto " + $4.label) + ident() + fim + ":\n" + $4.traducao;
+				$$.traducao += $3.traducao + newLine("goto " + $4.label) + newLine(fim+":") + $4.traducao;
 				
 			}
 
@@ -431,13 +457,13 @@ CONTROLE_ALT: TK_ELSE CONTROLE
 			{
 				cout << "Regra CONTROLE_ALT : TK_ELSE CONTROLE" << endl;	//debug
 				$$.label = generateLabel();
-				$$.traducao = $2.traducao + ident() + $$.label + ":\n"; 
+				$$.traducao = $2.traducao + newLine($$.label+":"); 
 			}
 			| TK_ELSE BLOCO
 			{
 				cout << "Regra CONTROLE_ALT : TK_ELSE BLOCO" << endl;	//debug
 				$$.label = generateLabel();
-				$$.traducao = $2.traducao + $$.label + ":\n";
+				$$.traducao = $2.traducao + newLine($$.label + ":");
 			}
 			;
 			
@@ -459,9 +485,9 @@ WHILE	: TK_WHILE
 		}
 		;
 
-LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
+LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			{
-				cout << "Regra LOOP : TK_ID TK_FROM E TK_TO E BLOCO" << endl;	//debug
+				cout << "Regra LOOP : FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO" << endl;	//debug
 				if (!isNumero($4.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
 				if (!isNumero($6.tipo)) yyerror("Expressao do limite superior deve retornar numero");
 				
@@ -472,24 +498,17 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				string check = generateVarLabel();
 				string inc = generateVarLabel();
 				string prevValue = generateVarLabel();
-				string checkElse = generateLabel();
-				string checkEnd = generateLabel();
+				string checkIncElse = generateLabel();
+				string checkIncEnd = generateLabel();
+				string checkBiggerElse = generateLabel();
+				string checkBiggerEnd = generateLabel();
 				
 				//cout << "declaring vars" << endl;	//debug;
 				final = resolverTipo($4.tipo, $6.tipo);
 				castTo = (final == $4.tipo) ? &$4 : &$6;
+				final = resolverTipo(final, $2.tipo);
+				castTo = (final == $2.tipo) ? &$2 : castTo;
 				
-				i = findVar($2.label);
-				if (i == NULL) {
-					$2.tipo = final;
-					declararLocal($2.tipo, $2.label);
-				} else if (!isNumero(i)) {
-					yyerror("Variavel " + $2.label + " deve armazenar numero");
-				} else {
-					$2.tipo = i;
-					final = resolverTipo(final, $2.tipo);
-					castTo = (final == $2.tipo) ? &$2 : castTo;
-				}
 				declararLocal(&tipo_bool, check);
 				declararLocal(final, inc);
 				declararLocal(final, prevValue);
@@ -509,34 +528,45 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				//cout << "checking increment" << endl;	//debug
 				//checar se incremento deve ser positivo ou negativo
 				$$.traducao += ident() + "//checar variavel de incremento\n" + newLine(check + " = " + limitInf + "<" + limitSup);
-				$$.traducao += newLine("if (" + check + ") goto " + checkElse);
+				$$.traducao += newLine("if (" + check + ") goto " + checkIncElse);
 				//incremento negatvo caso limitInf > limitSup
 				$$.traducao += "\t" + newLine(inc + " = " + "-1");
-				$$.traducao += "\t" + newLine("goto " + checkEnd);
+				$$.traducao += "\t" + newLine("goto " + checkIncEnd);
 				//incremento positivo caso limitInf < limitSup
-				$$.traducao += ident() + checkElse + ":\n";
+				$$.traducao += ident() + checkIncElse + ":\n";
 				$$.traducao += "\t" + newLine(inc + " = " + "1");
-				$$.traducao += ident() + checkEnd + ":\n\n";
+				$$.traducao += ident() + checkIncEnd + ":\n\n";
 				
 				//cout << "translating loop" << endl;	//debug
 				$$.traducao += newLine(iLabel + " = " + limitInf);	//inicializar variavel de contagem
 				//escrever bloco
-				$$.traducao += ident() + "//laco de repeticao\n" + ident() + loop->inicio + ":\n" + newLine(prevValue + " = " + iLabel);
-				$$.traducao += newLine(check + " = " + iLabel + ">=" + limitSup);
-				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $7.traducao + loop->progressao + ":\n";
+				$$.traducao += ident() + "//laco de repeticao\n" + newLine(loop->inicio+":") + newLine(prevValue + " = " + iLabel);
+				
+				//checar se verificacao deve ser >= ou <=
+				$$.traducao += ident() + "//checar variavel de incremento\n" + newLine(check + " = " + limitInf + "<" + limitSup);
+				$$.traducao += newLine("if (" + check + ") goto " + checkBiggerElse);
+				//verificar <= caso limitInf > limitSup
+				$$.traducao += "\t" + newLine(check + " = " + iLabel + "<=" + limitSup);
+				$$.traducao += "\t" + newLine("goto " + checkBiggerEnd);
+				//verificar >= caso limitInf < limitSup
+				$$.traducao += ident() + checkBiggerElse + ":\n";
+				$$.traducao += "\t" + newLine(check + " = " + iLabel + ">=" + limitSup);
+				$$.traducao += ident() + checkBiggerEnd + ":\n\n";
+				
+				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $7.traducao + loop->progressao+":\n";
 				//incrementar variavel de contagem
 				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
-				$$.traducao += newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				$$.traducao += newLine("goto " + loop->inicio);
 				
 				desempLoop();
 				desempContexto();
-				$$.traducao += ident() + "}\n";
+				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
 				//cout << "loop translated" << endl;	//debug
 
 			}
-			| FOR TK_ID TK_STEPPING E TK_FROM E TK_TO E BLOCO
+			| FOR DECLARACAO_NUMERO TK_STEPPING E TK_FROM E TK_TO E BLOCO
 			{
-				cout << "Regra LOOP : TK_ID TK_STEPPING E TK_FROM E TK_TO E BLOCO" << endl;	//debug
+				cout << "Regra LOOP : FOR DECLARACAO_NUMERO TK_STEPPING E TK_FROM E TK_TO E BLOCO" << endl;	//debug
 				if (!isNumero($4.tipo)) yyerror("Expressao do step deve retornar numero");
 				if (!isNumero($6.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
 				if (!isNumero($8.tipo)) yyerror("Expressao do limite superior deve retornar numero");
@@ -544,30 +574,21 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				Tipo *i, *final;
 				atributos *castTo;
 				string iLabel;
-				string limitInf, limitSup; 
+				string inc, limitInf, limitSup; 
 				string check = generateVarLabel();
-				string inc = generateVarLabel();
 				string prevValue = generateVarLabel();
+				string checkBiggerElse = generateLabel();
+				string checkBiggerEnd = generateLabel();
 				
 				//cout << "declaring vars" << endl;	//debug;
 				final = resolverTipo($4.tipo, $6.tipo);
 				castTo = (final == $4.tipo) ? &$4 : &$6;
 				final = resolverTipo(final, $8.tipo);
 				castTo = (final == $8.tipo) ? &$8 : castTo;
-				
-				i = findVar($2.label);
-				if (i == NULL) {
-					$2.tipo = final;
-					declararLocal($2.tipo, $2.label);
-				} else if (!isNumero(i)) {
-					yyerror("Variavel " + $2.label + " deve armazenar numero");
-				} else {
-					$2.tipo = i;
-					final = resolverTipo(final, $2.tipo);
-					castTo = (final == $2.tipo) ? &$2 : castTo;
-				}
+				final = resolverTipo(final, $2.tipo);
+				castTo = (final == $2.tipo) ? &$2 : castTo;
+
 				declararLocal(&tipo_bool, check);
-				declararLocal(final, inc);
 				declararLocal(final, prevValue);
 				
 				LoopLabel* loop = getLoop(0);
@@ -586,16 +607,27 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				//cout << "translating loop" << endl;	//debug
 				$$.traducao += newLine(iLabel + " = " + limitInf);	//inicializar variavel de contagem
 				//escrever bloco
-				$$.traducao += ident() + "//laco de repeticao\n" + ident() + loop->inicio + ":\n" + newLine(prevValue + " = " + iLabel);
-				$$.traducao += newLine(check + " = " + iLabel + ">=" + limitSup);
-				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $9.traducao + loop->progressao + ":\n";
+				$$.traducao += ident() + "//laco de repeticao\n" + newLine(loop->inicio+":") + newLine(prevValue + " = " + iLabel);
+				
+				//checar se verificacao deve ser >= ou <=
+				$$.traducao += ident() + "//checar variavel de incremento\n" + newLine(check + " = " + limitInf + "<" + limitSup);
+				$$.traducao += newLine("if (" + check + ") goto " + checkBiggerElse);
+				//verificar <= caso limitInf > limitSup
+				$$.traducao += "\t" + newLine(check + " = " + iLabel + "<=" + limitSup);
+				$$.traducao += "\t" + newLine("goto " + checkBiggerEnd);
+				//verificar >= caso limitInf < limitSup
+				$$.traducao += ident() + checkBiggerElse + ":\n";
+				$$.traducao += "\t" + newLine(check + " = " + iLabel + ">=" + limitSup);
+				$$.traducao += ident() + checkBiggerEnd + ":\n\n";
+				
+				$$.traducao += newLine("if (" + check + ") goto " + loop->fim) + $9.traducao + loop->progressao+":\n";
 				//incrementar variavel de contagem
 				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
-				$$.traducao += newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				$$.traducao += newLine("goto " + loop->inicio);
 				
 				desempLoop();
 				desempContexto();
-				$$.traducao += ident() + "}\n";
+				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
 				//cout << "loop translated" << endl;	//debug
 
 			} 
@@ -610,8 +642,8 @@ LOOP 		: FOR TK_ID TK_FROM E TK_TO E BLOCO
 				declararLocal(&tipo_bool, var);
 				
 				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
-				$$.traducao += ident() + loop->inicio + ":\n" + $2.traducao + newLine(var + " = !" + $2.label);
-				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $3.traducao + newLine("goto " + loop->inicio) + ident() + loop->fim + ":\n";
+				$$.traducao += ident() + newLine(loop->inicio+":") + $2.traducao + newLine(var + " = !" + $2.label);
+				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $3.traducao + newLine("goto " + loop->inicio) + ident() + newLine(loop->fim+":");
 				desempLoop();
 				desempContexto();
 				$$.traducao += ident() + "}\n";
@@ -779,9 +811,9 @@ int main (int argc, char **args) {
 	closeFiles();
 	if (string(args[1]) != OUTPUT_INTERMEDIARIO) {
 		string compile = "g++ -std=c++11 " + outputFileName + " -o " + outputCompiled;
-		//system("stty -echo");
+		string echo = "echo " + compile + "\n";
+		system(echo.c_str());	//debug
 		system(compile.c_str());
-		//system("stty echo");
 		remove(outputFileName.c_str());	
 	}	
 	return 0;

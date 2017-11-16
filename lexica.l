@@ -5,15 +5,19 @@
 %}
 
 ESPACO [ \t]
-DIGITO [0-9]
+ALGARISMO [0-9]
 LETRA [A-Za-z]
+ASCII [ -~]
+ASCIIFULL [\0-~]
 
 BOOL ("false"|"true")
 DELIM {ESPACO}+
-INT {DIGITO}+
+INT {ALGARISMO}+
 FLOAT {INT}+("."{INT}+)?
-CHAR \'({LETRA}|{DIGITO})\'
+CHAR \'{ASCIIFULL}\'
 ID {LETRA}({LETRA}|{INT})*
+COMENTARIO "//"{ASCII}*"\n"
+COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 
 %%
 
@@ -31,8 +35,8 @@ ID {LETRA}({LETRA}|{INT})*
 "list"		{return TK_TIPO_LIST;}
 
 "main"		{return TK_MAIN;}
-"do"			{return TK_BLOCO_ABRIR;}
-"end"			{return TK_BLOCO_FECHAR;}
+"do"		{return TK_BLOCO_ABRIR;}
+"end"		{return TK_BLOCO_FECHAR;}
 "if"		{return TK_IF;}
 "else"		{return TK_ELSE;}
 "for"		{return TK_FOR;}
@@ -69,11 +73,13 @@ ID {LETRA}({LETRA}|{INT})*
 
 [(){}[\];,]	{ return *yytext; }
 
-{INT}		{ yylval.label = yytext; return TK_INT; }
-{FLOAT}		{ yylval.label = yytext; return TK_FLOAT; }
-{BOOL}		{ yylval.label = yytext; return TK_BOOL; }
-{CHAR}		{ yylval.label = yytext; return TK_CHAR;}
-{ID}		{ yylval.label = yytext; return TK_ID; }
+{INT}			{ yylval.label = yytext; return TK_INT; }
+{FLOAT}			{ yylval.label = yytext; return TK_FLOAT; }
+{BOOL}			{ yylval.label = yytext; return TK_BOOL; }
+{CHAR}			{ yylval.label = yytext; return TK_CHAR;}
+{ID}			{ yylval.label = yytext; return TK_ID; }
+{COMENTARIO}	{ yylval.label = yytext; return TK_COMENTARIO; }
+{COMENTARIO_MULT_LINHA} {yylval.label = yytext; return TK_COMENTARIO_MULT_LINHA; }
 
 .			{ *yytext; }
 
