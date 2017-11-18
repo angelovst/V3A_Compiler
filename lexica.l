@@ -32,6 +32,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "float"		{return TK_TIPO_FLOAT;}
 "bool"		{return TK_TIPO_BOOL;}
 "char"		{return TK_TIPO_CHAR;}
+"struct"	{return TK_STRUCT;}
 "list"		{return TK_TIPO_LIST;}
 
 "main"		{return TK_MAIN;}

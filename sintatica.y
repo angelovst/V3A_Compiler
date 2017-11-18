@@ -22,7 +22,7 @@ FILE *input;
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST TK_STRUCT
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
@@ -275,6 +275,11 @@ DECLARACAO 	: TIPO TK_ID
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $4.tipo->trad);
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
+			}
+			
+			| TK_STRUCT TK_ID
+			{
+				
 			}
 			;
 DECLARACAO_NUMERO	: TK_ID

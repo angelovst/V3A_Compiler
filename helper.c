@@ -46,7 +46,7 @@ int getGroup (Tipo *tipo) {
 }
 
 bool belongsTo (Tipo *tipo, int group) {
-	return getGroup(tipo)==group;
+	return getGroup(tipo)&group;
 }
 
 Tipo* resolverTipo (Tipo *a, Tipo *b) {
@@ -61,7 +61,7 @@ Tipo* resolverTipo (Tipo *a, Tipo *b) {
 }
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
-	if (getGroup(var1->tipo) != getGroup(var2->tipo)) {
+	if (getGroup(var1->tipo) != getGroup(var2->tipo) || belongsTo(var1->tipo, GROUP_UNCASTABLE) || belongsTo(var2->tipo, GROUP_UNCASTABLE)) {
 		return INVALID_CAST;
 	}
 	int cast = var1->tipo->id - var2->tipo->id;
@@ -107,7 +107,7 @@ bool declararGlobal (Tipo *tipo, std::string &label) {
 	if (bottom->vars.count(label)) {
 		return false;
 	}
-	bottom->declar += tipo->trad + " " + label + ";\n\t";
+	if (!belongsTo(tipo, GROUP_STRUCT)) bottom->declar += tipo->trad + " " + label + ";\n\t";
 	bottom->vars[label] = tipo;
 	return true;
 }
@@ -119,7 +119,7 @@ bool declararLocal (Tipo *tipo, std::string &label) {
 		return false;
 	}
 
-	top->declar += newLine(tipo->trad + " " + label);	
+	if (!belongsTo(tipo, GROUP_STRUCT)) top->declar += newLine(tipo->trad + " " + label);	
 	top->vars[label] = tipo;
 	//cout << "declaracao " << tipo->trad << " " << label << endl;	//debug
 	return true;

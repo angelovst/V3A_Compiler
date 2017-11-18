@@ -16,11 +16,13 @@
 
 //id consiste em duas partes, primeiros 8bits definem a qual grupo o tipo pertence, os demais definem qual nivel ele esta
 //tipos podem ser convertidos de um para outro caso pertencam ao mesmo grupo, um tipo pode ser implicitamente convertido para outro caso tenha nivel menor
-#define GROUP_NUMBER	0x01000000
-#define GROUP_BOOL		0x02000000
-#define GROUP_CHAR		0x04000000
-#define GROUP_CONTAINER 0x08000000
-#define GROUP_FUNCTION	0x10000000
+#define GROUP_NUMBER		0x01000000
+#define GROUP_BOOL			0x02000000
+#define GROUP_CHAR			0x04000000
+#define GROUP_CONTAINER 	0x08000000
+#define GROUP_FUNCTION		0x10000000
+#define GROUP_STRUCT		0x20000000
+#define GROUP_UNCASTABLE	0x40000000	
 
 #define TIPO_INT_ID		GROUP_NUMBER|0x01
 #define TIPO_FLOAT_ID	GROUP_NUMBER|0x04
@@ -31,13 +33,20 @@
 
 #define TIPO_LIST_ID	GROUP_CONTAINER|0x01
 
-#define TIPO_INF_OP_ID		GROUP_FUNCTION|0x01
+#define TIPO_INF_OP_ID	GROUP_FUNCTION|0x01
+
+#define TIPO_STRUCT_ID	GROUP_STRUCT|GROUP_UNCASTABLE|0x00
 
 #define INVALID_CAST "invalid cast"
 #define VAR_ALREADY_DECLARED "already declared"
 
 #define BOOL_TRUE "true"
 #define BOOL_FALSE "false"
+
+typedef struct _CustomType {
+	Tipo tipo;
+	std::map<std::string, Tipo *tipo> signature;
+} CustomType;
 
 typedef struct _Tipo {
 	unsigned int id;
@@ -46,6 +55,7 @@ typedef struct _Tipo {
 	std::string (*traducaoParcial)(void *args);
 	std::vector<struct _Tipo*> *retornos;		//usado em funcoes
 	std::vector<struct _Tipo*> *argumentos;	//usado em funcoes
+	CustomType &customType;
 } Tipo;
 
 typedef struct _LoopLabel {
@@ -57,6 +67,8 @@ typedef struct _LoopLabel {
 typedef struct _Context {
 	std::map<std::string, Tipo*> vars;
 	std::string declar;
+	std::map<std::string, CustomType> customTypes;
+	std::list<void*> garbageCollector;
 } Context;
 
 typedef struct atributos {
