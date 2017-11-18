@@ -160,7 +160,7 @@ E 			: E OP_INFIX E {
 				
 				traducao = $2.tipo->traducaoParcial((void*)args);
 				if (traducao == INVALID_CAST) {
-					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $3.tipo->label);
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
 				} else if (traducao == VAR_ALREADY_DECLARED) {
 					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
 				}	
@@ -175,7 +175,7 @@ E 			: E OP_INFIX E {
 				$$.label = generateVarLabel();
 				declararLocal($2.tipo, $$.label);
 				$$.tipo = $2.tipo;
-				$$.traducao = $4.traducao + newLine($$.label + " = " + '(' + $2.tipo->label + ')' + $4.label);
+				$$.traducao = $4.traducao + newLine($$.label + " = " + '(' + $2.tipo->trad + ')' + $4.label);
 			}
 
 			| '(' E ')'
@@ -250,7 +250,7 @@ E 			: E OP_INFIX E {
 			
 DECLARACAO 	: TIPO TK_ID
 			{
-				//cout << "tipo " << $1.tipo->label << " declarado" << endl;
+				//cout << "tipo " << $1.tipo->trad << " declarado" << endl;
 				cout << "Regra DECLARACAO : TIPO TK_ID" << endl;	//debug
 				$$.tipo = $1.tipo;
 				if(!declararLocal($1.tipo, $2.label)) {
@@ -272,7 +272,7 @@ DECLARACAO 	: TIPO TK_ID
 				$2.tipo = $1.tipo;
 				atrib = traducaoAtribuicao((void*)args);
 				if (atrib == INVALID_CAST) {
-					yyerror("Operacao invalida com tipos " + $1.tipo->label + " e " + $4.tipo->label);
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $4.tipo->trad);
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
 			}
@@ -284,7 +284,7 @@ DECLARACAO_NUMERO	: TK_ID
 						if ($$.tipo == NULL) {
 							$$.tipo = &tipo_int;
 							declararLocal($$.tipo, $1.label);
-						} else if (!isNumero($1.tipo)) {
+						} else if (!belongsTo($1.tipo, GROUP_NUMBER)) {
 							yyerror($1.label + " era esperado armazenar numero");
 						}
 					}
@@ -383,7 +383,7 @@ INCREMENTOS	: TK_ID SINAL_DUPL
 				$$.label = var2;
 				$$.tipo = tipo;
 				$$.traducao =	newLine(var2 + " = " + $1.label) + newLine(var1 + " = 1") + 
-								newLine(tipo->label + " = " + $1.label + $2.label + var1);
+								newLine($1.label + " = " + $1.label + $2.label + var1);
 			}
 			| SINAL_DUPL TK_ID
 			{
@@ -420,9 +420,9 @@ SINAL_DUPL	: TK_2MAIS
 			
 CONTROLE	: TK_IF E BLOCO
 			{
-				//cout << $2.tipo->label << endl;	//debug
+				//cout << $2.tipo->trad << endl;	//debug
 				cout << "Regra CONTROLE : TK_IF E BLOCO" << endl;	//debug
-				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
+				if($2.tipo != &tipo_bool) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
@@ -435,7 +435,7 @@ CONTROLE	: TK_IF E BLOCO
 			{
 				cout << "Regra CONTROLE : TK_IF E BLOCO CONTROLE_ALT" << endl;	//debug
 
-				if($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao DEVE ser bool");
+				if($2.tipo != &tipo_bool) yyerror("Tipo da expressao DEVE ser bool");
 
 				string var = generateVarLabel();
 				string fim = generateLabel();
@@ -497,8 +497,8 @@ REPEAT	: TK_REPEAT TK_DOTS
 LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			{
 				cout << "Regra LOOP : FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO" << endl;	//debug
-				if (!isNumero($4.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
-				if (!isNumero($6.tipo)) yyerror("Expressao do limite superior deve retornar numero");
+				if (!belongsTo($4.tipo, GROUP_NUMBER)) yyerror("Expressao do limite inferior deve retornar numero");
+				if (!belongsTo($6.tipo, GROUP_NUMBER)) yyerror("Expressao do limite superior deve retornar numero");
 				
 				Tipo *i, *final;
 				atributos *castTo;
@@ -576,9 +576,9 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			| FOR DECLARACAO_NUMERO TK_STEPPING E TK_FROM E TK_TO E BLOCO
 			{
 				cout << "Regra LOOP : FOR DECLARACAO_NUMERO TK_STEPPING E TK_FROM E TK_TO E BLOCO" << endl;	//debug
-				if (!isNumero($4.tipo)) yyerror("Expressao do step deve retornar numero");
-				if (!isNumero($6.tipo)) yyerror("Expressao do limite inferior deve retornar numero");
-				if (!isNumero($8.tipo)) yyerror("Expressao do limite superior deve retornar numero");
+				if (!belongsTo($4.tipo, GROUP_NUMBER)) yyerror("Expressao do step deve retornar numero");
+				if (!belongsTo($6.tipo, GROUP_NUMBER)) yyerror("Expressao do limite inferior deve retornar numero");
+				if (!belongsTo($8.tipo, GROUP_NUMBER)) yyerror("Expressao do limite superior deve retornar numero");
 				
 				Tipo *i, *final;
 				atributos *castTo;
@@ -644,7 +644,7 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			| WHILE E BLOCO 
 			{
 				cout << "Regra LOOP : TK_WHILE E BLOCO" << endl;	//debug
-				if ($2.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do while DEVE ser bool");
+				if ($2.tipo != &tipo_bool) yyerror("Tipo da expressao do while DEVE ser bool");
 				string var = generateVarLabel();
 				LoopLabel* loop = getLoop(0);
 					
@@ -661,7 +661,7 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			| REPEAT COMANDOS TK_UNTIL E TK_ENDL
 			{
 				cout << "Regra LOOP : REPEAT COMANDOS TK_UNTIL E TK_ENDL" << endl;	//debug
-				if ($4.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do repeat DEVE ser bool");
+				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do repeat DEVE ser bool");
 				
 				LoopLabel* loop = getLoop(0);
 				
@@ -827,7 +827,9 @@ int main (int argc, char **args) {
 		system(echo.c_str());	//debug
 		system(compile.c_str());
 		remove(outputFileName.c_str());	
-	}	
+	}
+	//limpar retorno e argumentos de funcoes
+	delete(tipo_logic_operator.retornos);
 	return 0;
 	
 }

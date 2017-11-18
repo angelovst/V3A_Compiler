@@ -2,16 +2,15 @@
 
 #include <iostream>
 
-Tipo tipo_float = { TIPO_FLOAT_ID, NUMBER_SUBSET*2, sizeof(float), TIPO_FLOAT, NULL, NULL, NULL };
-Tipo tipo_int = { TIPO_INT_ID, NUMBER_SUBSET, sizeof(int), TIPO_INT, NULL, NULL, NULL };
-Tipo tipo_bool = { TIPO_BOOL_ID, UNCASTABLE, sizeof(unsigned char), TIPO_BOOL, NULL, NULL, NULL };
-Tipo tipo_char = { TIPO_CHAR_ID, UNCASTABLE, sizeof(char), TIPO_CHAR, NULL, NULL, NULL };
-Tipo tipo_list = { TIPO_LIST_ID, UNCASTABLE, sizeof(size_t)+2*sizeof(void*), TIPO_LIST, NULL, NULL, NULL };
-Tipo tipo_ref = { TIPO_REF_ID, 0, sizeof(void*), TIPO_REF, NULL, NULL, NULL};
+Tipo tipo_float = { TIPO_FLOAT_ID, sizeof(float), TIPO_FLOAT_TRAD, NULL, NULL, NULL };
+Tipo tipo_int = { TIPO_INT_ID, sizeof(int), TIPO_INT_TRAD, NULL, NULL, NULL };
+Tipo tipo_bool = { TIPO_BOOL_ID, sizeof(unsigned char), TIPO_BOOL_TRAD, NULL, NULL, NULL };
+Tipo tipo_char = { TIPO_CHAR_ID, sizeof(char), TIPO_CHAR_TRAD, NULL, NULL, NULL };
+Tipo tipo_list = { TIPO_LIST_ID, sizeof(size_t)+2*sizeof(void*), TIPO_LIST_TRAD, NULL, NULL, NULL };
 
-Tipo tipo_arithmetic_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoLAPadrao, NULL, NULL };
-Tipo tipo_logic_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
-Tipo tipo_atrib_operator = { TIPO_INFIX_OPERATOR_ID, UNCASTABLE, 0, TIPO_INFIX_OPERATOR, &traducaoAtribuicao, NULL, NULL };
+Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, &traducaoLAPadrao, NULL, NULL };
+Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
+Tipo tipo_atrib_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, &traducaoAtribuicao, NULL, NULL };
 
 unsigned int line = 1;
 
@@ -37,24 +36,35 @@ string newLine (const string &line) {
 }
 
 //FUNCOES DE PROCURA DE VARIAVEL
-Tipo* findVar(string &label) {
-	list<Context>::iterator i = contextStack.begin();
-	while (i != contextStack.end() && !i->vars.count(label)) {
-		i++;
-	}		
-	return (i == contextStack.end()) ? NULL : i->vars[label];
-}
-
 string generateVarLabel (void) {
 	static unsigned int i = 0;
-	return "tmp" + to_string(i++);
-}	
+	return "_tmp" + to_string(i++);
+}
+
+int getGroup (Tipo *tipo) {
+	return tipo->id&0xFF000000;
+}
+
+bool belongsTo (Tipo *tipo, int group) {
+	return getGroup(tipo)==group;
+}
+
+Tipo* resolverTipo (Tipo *a, Tipo *b) {
+	if (a == NULL) {
+		return b;
+	} else if (b == NULL) {
+		return a;
+	} else if (a->id < b->id) {	//b e o tipo do retorno
+		return b;
+	}
+	return a;	//a e o tipo do retorno
+}
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
-	if (var1->tipo->subset == UNCASTABLE || var2->tipo->subset == UNCASTABLE) {
+	if (getGroup(var1->tipo) != getGroup(var2->tipo)) {
 		return INVALID_CAST;
 	}
-	int cast = var1->tipo->subset - var2->tipo->subset;
+	int cast = var1->tipo->id - var2->tipo->id;
 	
 	if (cast == 0) {	//nao necessita cast
 		*label1 = var1->label;
@@ -64,24 +74,32 @@ string implicitCast (atributos *var1, atributos *var2, string *label1, string *l
 		*label1 = generateVarLabel();
 		declararLocal(var2->tipo, *label1);
 		*label2 = var2->label;
-		return newLine(*label1 + " = (" + var2->tipo->label + ")" + var1->label);
+		return newLine(*label1 + " = (" + var2->tipo->trad + ")" + var1->label);
 	}
 	//cast var2 para var1
 	*label1 = var1->label;
 	*label2 = generateVarLabel();
 	declararLocal(var1->tipo, *label2);
-	return newLine(*label2 + " = (" + var1->tipo->label + ")" + var2->label);
+	return newLine(*label2 + " = (" + var1->tipo->trad + ")" + var2->label);
 }
 
-Tipo* resolverTipo (Tipo *a, Tipo *b) {
-	if (a == NULL) {
-		return b;
-	} else if (b == NULL) {
-		return a;
-	} else if (a->subset < b->subset) {	//b e o tipo do retorno
-		return b;
-	}
-	return a;	//a e o tipo do retorno
+//CONTEXTO
+void empContexto (void) {
+	contextStack.push_front({map<string, Tipo*>(), ""});
+	contextDepth++;
+}
+
+void desempContexto (void) {
+	contextStack.pop_front();
+	contextDepth--;
+}
+
+Tipo* findVar(string &label) {
+	list<Context>::iterator i = contextStack.begin();
+	while (i != contextStack.end() && !i->vars.count(label)) {
+		i++;
+	}		
+	return (i == contextStack.end()) ? NULL : i->vars[label];
 }
 
 bool declararGlobal (Tipo *tipo, std::string &label) {
@@ -89,7 +107,7 @@ bool declararGlobal (Tipo *tipo, std::string &label) {
 	if (bottom->vars.count(label)) {
 		return false;
 	}
-	bottom->declar += tipo->label + " " + label + ";\n\t";
+	bottom->declar += tipo->trad + " " + label + ";\n\t";
 	bottom->vars[label] = tipo;
 	return true;
 }
@@ -101,30 +119,10 @@ bool declararLocal (Tipo *tipo, std::string &label) {
 		return false;
 	}
 
-	top->declar += newLine(tipo->label + " " + label);	
+	top->declar += newLine(tipo->trad + " " + label);	
 	top->vars[label] = tipo;
-	//cout << "declaracao " << tipo->label << " " << label << endl;	//debug
+	//cout << "declaracao " << tipo->trad << " " << label << endl;	//debug
 	return true;
-}
-
-bool isNumero (Tipo *tipo) {
-	if (tipo == NULL) {
-		return false;
-	} else if (tipo->subset % NUMBER_SUBSET == 0) {
-		return true;
-	}
-	return false;
-}
-
-//FUNCOES PARA ENTRADA E SAIDA DE BLOCOS, CONTROLE DO CONTEXTO
-void empContexto (void) {
-	contextStack.push_front({map<string, Tipo*>(), ""});
-	contextDepth++;
-}
-
-void desempContexto (void) {
-	contextStack.pop_front();
-	contextDepth--;
 }
 
 //LOOP
@@ -185,22 +183,24 @@ string traducaoAtribuicao (void *args) {
 	atributos *lvalue = atribs[0];
 	atributos *rvalue = atribs[1];
 	string *retorno = *((string**)((atributos**)args+2));
+	string cast;
+	string rlabel, llabel;
 	
 	lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
 	if (lvalue->tipo == NULL) {
-		//cout << rvalue->tipo->label << endl;	//debug
+		//cout << rvalue->tipo->trad << endl;	//debug
 		if (!declararLocal(rvalue->tipo, lvalue->label)) {
 			return VAR_ALREADY_DECLARED;
 		}
 		lvalue->tipo = rvalue->tipo;
-	}
+	} else {
+		bool rightGroup = belongsTo(rvalue->tipo, getGroup(lvalue->tipo));
+		if (!rightGroup || rightGroup && rvalue->tipo->id > lvalue->tipo->id) {
+			return INVALID_CAST;
+		}
+	}	
 	
-	if (rvalue->tipo->id == lvalue->tipo->id || rvalue->tipo->subset < lvalue->tipo->subset) {
-		string cast;
-		string rlabel, llabel;
-		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
-		return cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
-	}
-	return INVALID_CAST;
+	cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
+	return cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 }
