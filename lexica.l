@@ -43,8 +43,9 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "stepping"	{return TK_STEPPING;}
 "from"		{return TK_FROM;}
 "to"		{return TK_TO;}
-"do"		{return TK_DO;}
 "while"		{return TK_WHILE;}
+"repeat"	{return TK_REPEAT;}
+"until"		{return TK_UNTIL;}
 "break"		{return TK_BREAK;}
 "continue"	{return TK_CONTINUE;}
 "all"		{return TK_ALL;}

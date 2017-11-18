@@ -23,7 +23,7 @@ FILE *input;
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_STR
-%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_DO TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_DOTS
@@ -57,7 +57,7 @@ BLOCO	: ESCOPO_INICIO COMANDOS ESCOPO_FIM
 			desempContexto();
 			
 			//$$.traducao = "";
-			$$.traducao = ident() + "{\n" + declar + "\n" + $2.traducao + ident() + "}";
+			$$.traducao = $1.traducao + declar + "\n" + $2.traducao + ident() + "}";
 			$$.label = "";
 		}
 		;
@@ -65,6 +65,7 @@ BLOCO	: ESCOPO_INICIO COMANDOS ESCOPO_FIM
 ESCOPO_INICIO	:	TK_BLOCO_ABRIR TK_DOTS
 				{
 					cout << "Regra ESCOPO_INICIO : TK_BLOCO_ABRIR" << endl;	//debug
+					$$.traducao = ident() + "{\n";
 					empContexto();
 				}
 				;
@@ -484,6 +485,14 @@ WHILE	: TK_WHILE
 			empContexto();	//separar expressoes dentro da declaracao do for do resto
 		}
 		;
+		
+REPEAT	: TK_REPEAT TK_DOTS
+		{
+			cout << "Regra REPEAT : TK_UNTIL" << endl;
+			empLoop();
+			$$.traducao = "\n" + ident() + "//REPEAT UNTIL LOOP\n" + ident() + "{\n";
+			empContexto();
+		}
 
 LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 			{
@@ -642,24 +651,27 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				declararLocal(&tipo_bool, var);
 				
 				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
-				$$.traducao += ident() + newLine(loop->inicio+":") + $2.traducao + newLine(var + " = !" + $2.label);
+				$$.traducao += newLine(loop->inicio+":") + $2.traducao + newLine(var + " = !" + $2.label);
 				$$.traducao += newLine("if (" + var + ") goto " + loop->fim) + $3.traducao + newLine("goto " + loop->inicio) + ident() + newLine(loop->fim+":");
 				desempLoop();
 				desempContexto();
 				$$.traducao += ident() + "}\n";
 				
 			}
-
-			| BLOCO TK_WHILE E TK_ENDL {
-				cout << "Regra LOOP : TK_DO BLOCO TK_WHILE E TK_ENDL" << endl;	//debug
-				if ($4.tipo != &tipo_bool) yyerror("Tipo da expressao do DO WHILE DEVE ser bool");
-
+			| REPEAT COMANDOS TK_UNTIL E TK_ENDL
+			{
+				cout << "Regra LOOP : REPEAT COMANDOS TK_UNTIL E TK_ENDL" << endl;	//debug
+				if ($4.tipo->label != TIPO_BOOL) yyerror("Tipo da expressao do repeat DEVE ser bool");
+				
 				LoopLabel* loop = getLoop(0);
-
-				$$.traducao = loop->inicio + ":\n" + loop->progressao + ":\n" + $3.traducao + $1.traducao + newLine("if (" + $3.label + ") goto " + loop->inicio);
-				$$.traducao += loop->fim + ":\n";
+				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
+				$$.traducao += newLine(loop->inicio+":") + newLine(loop->progressao+":") + $2.traducao + "\n" + $4.traducao;
+				$$.traducao += newLine("if (" + $4.label + ") goto " + loop->fim);
+				$$.traducao += newLine("goto " + loop->inicio);
 				desempLoop();
-
+				desempContexto();
+				$$.traducao += ident() + "} " + loop->fim + ":;\n";
 			}
 			;
 			

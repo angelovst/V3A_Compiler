@@ -39,6 +39,8 @@
 					<keyword>from</keyword>
 					<keyword>to</keyword>
 					<keyword>while</keyword>
+					<keyword>repeat</keyword>
+					<keyword>until</keyword>
 				</context>
 				
 				<context id="functions" style-ref="function">
