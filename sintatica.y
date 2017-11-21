@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "helper.h"
+#include "struct.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 
@@ -20,12 +21,15 @@ int yyparse (void);
 fstream output;
 FILE *input;
 
+CustomType constructingType;
+
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST TK_STRUCT
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
+%token TK_STRUCT TK_HAS
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -98,6 +102,12 @@ COMANDO 	: E
 			| DECLARACAO
 			{
 				cout << "Regra COMANDO : DECLARACAO" << endl;	//debug
+				$$.traducao = $1.traducao;
+			}
+			
+			| DECLARACAO_STRUCT
+			{
+				cout << "Regra COMANDO : DECLARACAO_STRUCT" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			
@@ -276,12 +286,36 @@ DECLARACAO 	: TIPO TK_ID
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
 			}
-			
-			| TK_STRUCT TK_ID
-			{
-				
-			}
 			;
+			
+DECLARACAO_STRUCT	: TK_STRUCT TK_ID TK_HAS TK_DOTS MEMBROS_STRUCT TK_BLOCO_FECHAR
+					{
+						cout << "Regra DECLARACAO_STRUCT : TK_STRUCT TK_ID TK_HAS MEMBROS_STRUCT" << endl;	//debug
+						$$.traducao = $4.traducao;
+					}
+					;
+					
+MEMBROS_STRUCT	:	MEMBRO_STRUCT MEMBROS_STRUCT
+				{
+					cout << "Regra MEMBROS_STRUCT : MEMBRO_STRUCT MEMBROS_STRUCT" << endl;	//debug
+				}
+				|
+				{
+					cout << "Regra MEMBROS_STRUCT : vazio" << endl;	//debug
+				}
+				;
+				
+MEMBRO_STRUCT	: TIPO TK_ID
+				{
+					cout << "Regra MEMBRO_STRUCT : TIPO TK_ID" << endl;	//debug
+					if (!addVar(&constructingType, $1.tipo, $2.label)) {
+						yyerror("Variavel " + $2.label + " ja declarada no struct");
+					}			
+				}
+				| TK_ENDL
+				;
+
+
 DECLARACAO_NUMERO	: TK_ID
 					{
 						cout << "Regra DECLARACAO : TK_ID" << endl;

@@ -41,6 +41,8 @@
 					<keyword>while</keyword>
 					<keyword>repeat</keyword>
 					<keyword>until</keyword>
+					<keyword>type</keyword>
+					<keyword>has</keyword>
 				</context>
 				
 				<context id="functions" style-ref="function">

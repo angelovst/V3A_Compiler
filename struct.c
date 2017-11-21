@@ -1,69 +1,62 @@
 #include "struct.h"
 
-CustomType* findCustomType (std::string &label) {
-	std::list<Context> it = contextStack.begin();
-	while (it->customTypes.count(label) == 0 && it != contextStack.end()) {
-		it++;
+using namespace std;
+
+CustomType newCustomType (void) {
+	static unsigned int id = 1;
+	CustomType c;
+	
+	c.tipo = { GROUP_STRUCT|id, 0, "void*", NULL, NULL, NULL };
+	id++;
+	
+	return c;
+}
+
+bool addVar (CustomType *type, Tipo *tipo, std::string &label) {
+	if (type->memberOffset.count(label)) {
+		return false;
 	}
-	if (it == contextStack.end()) {
+	
+	type->memberOffset[label] = type->tipo.size;
+	type->memberType[label] = tipo;
+	
+	type->tipo.size += tipo->size;
+	return true;
+}
+
+Tipo* getTipo (CustomType *type, std::string &member) {
+	if (type->memberType.count(member) == 0) {
 		return NULL;
 	}
-	return &(*it);
+	return type->memberType[member];
 }
 
-bool declareVarIn (CustomType *custom, Tipo *tipo, std::string &label) {
-	if (custom->signature.count(label)) {
-		return false;
+std::string setAccess (std::string &accessVar, CustomType *type, std::string &instance, std::string &member) {
+	if (type->memberOffset.count(member) == 0) {
+		return UNDEFINED_MEMBER;
 	}
-	custom->signature[label] = tipo;
-	return true;
-}
-
-bool declareVarInWithValue (CustomType *custom, Tipo *tipo, std::string &label, std::string &value) {
-	if (custom->signature.count(label)) {
-		return false;
-	}
-	custom->signature[label] = tipo;
-	custom->defaultValue[label] = value;
-	return true;	
-}
-
-bool declareGlobalOfType (std::string &customType, std::string &label) {
-	CustomType *type = findCustomType(customType);
-	map<std::string, Tipo*>::iterator it;
-	std::string declar;
-	if (type == NULL) {
-		return false;
-	}
+	std::string traducao = "";
+	std::string memberAddr = generateVarLabel();
+	std::string varAddr = generateVarLabel();
+	size_t offset = type->memberOffset[member];
+	Tipo *t = type->memberType[member];
 	
-	//declarar todas as variaveis do tipo
-	it = type->signature.begin();
-	while (it != type->signature.end()) {
-		declar = customType+"_"+label+"_"+it->first;
-		declararGlobal(it->second, declar);
-	}
-	//declarar variavel
-	declararGlobal(&type->tipo, label);
-	return true;
+	declararLocal(&tipo_ptr, memberAddr);
+	declararLocal(&tipo_ptr, varAddr);
 	
+	traducao += newLine(memberAddr + " = " + instance + "+" + std::to_string(offset));	//armazenar local de memoria onde membro se encontra
+	traducao += newLine(varAddr + " = &" + accessVar);	//armazenar local de memoria onde variavel de acesso se encontra
+	traducao += newLine("memcpy("+varAddr+", "+memberAddr+", "+std::to_string(t->size)+")");
+	
+	return traducao;
 }
 
-bool declareLocalOfType (std::string &customType, std::string &label) {
-	CustomType *type = findCustomType(customType);
-	map<std::string, Tipo*>::iterator it;
-	std::string declar;
-	if (type == NULL) {
-		return false;
-	}
+std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage) {
+	std::string traducao = "";
 	
-	//declarar todas as variaveis do tipo
-	it = type->signature.begin();
-	while (it != type->signature.end()) {
-		declar = customType+"_"+label+"_"+it->first;
-		declararLocal(it->second, declar);
-	}
-	//declarar variavel
 	declararLocal(&type->tipo, label);
-	return true;
 	
+	traducao += newLine(label + " = " + "malloc("+std::to_string(type->tipo.size)+")");
+	
+	return traducao;
 }
