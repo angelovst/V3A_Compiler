@@ -17,13 +17,15 @@
 
 //id consiste em duas partes, primeiros 8bits definem a qual grupo o tipo pertence, os demais definem qual nivel ele esta
 //tipos podem ser convertidos de um para outro caso pertencam ao mesmo grupo, um tipo pode ser implicitamente convertido para outro caso tenha nivel menor
-#define GROUP_NUMBER		0x01000000
+#define GROUP_PTR			0x01000000
+#define GROUP_NUMBER		0x40000000
 #define GROUP_BOOL			0x02000000
 #define GROUP_CHAR			0x04000000
 #define GROUP_CONTAINER 	0x08000000
 #define GROUP_FUNCTION		0x10000000
 #define GROUP_STRUCT		0x20000000
-#define GROUP_UNCASTABLE	0x40000000	
+
+#define GROUP_UNCASTABLE	0x80000000
 
 #define TIPO_INT_ID		GROUP_NUMBER|0x01
 #define TIPO_FLOAT_ID	GROUP_NUMBER|0x04
@@ -38,10 +40,9 @@
 
 #define TIPO_STRUCT_ID	GROUP_STRUCT|GROUP_UNCASTABLE|0x00
 
-#define TIPO_PTR_ID GROUP_UNCASTABLE|0x00
-
 #define INVALID_CAST "invalid cast"
 #define VAR_ALREADY_DECLARED "already declared"
+#define VOID_POINTER "void pointer"
 
 #define BOOL_TRUE "true"
 #define BOOL_FALSE "false"
@@ -50,6 +51,7 @@ typedef struct _Tipo {
 	unsigned int id;
 	size_t size;
 	std::string trad;
+	std::string (*cast)(std::string &dst, struct _Tipo *selfT, struct _Tipo *fromT, std::string &fromL);	//faz cast de from para uma instancia de self
 	std::string (*traducaoParcial)(void *args);
 	std::vector<struct _Tipo*> *retornos;		//usado em funcoes
 	std::vector<struct _Tipo*> *argumentos;	//usado em funcoes
@@ -65,6 +67,7 @@ typedef struct atributos {
 typedef struct {
 	std::map<std::string, Tipo*> vars;
 	std::string declar;
+	std::string garbageCollect;
 } Context;
 
 std::string generateVarLabel (void);
@@ -77,6 +80,9 @@ bool belongsTo (Tipo *tipo, int group);
 Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno entre uma operacao envolvendo a e b
 
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
+
+//FUNCOES DE CAST
+std::string castPadrao (std::string &dst, struct _Tipo *selfT, struct _Tipo *fromT, std::string &fromL);
 
 //FUNCOES DE OPERADORES
 std::string traducaoLAPadrao (void *args);	//args = (atributos *varA, atributos *varB, string *retorno, string *operador)

@@ -36,6 +36,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 
 "type"		{return TK_STRUCT;}
 "has"		{return TK_HAS;}
+"'s"		{return TK_MEMBER_ACCESS;}
 
 "main"		{return TK_MAIN;}
 "do"		{return TK_BLOCO_ABRIR;}

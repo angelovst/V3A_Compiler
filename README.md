@@ -49,5 +49,17 @@ repeat:
 	print a
 	a <- a+1
 until a = 10
+
+type Person has:
+	char initial
+	int number
+end
+
+Person bob
+
+bob's number <- 0
+bob's initial <- 'b'
+
+b <- bob's initial
 ```
 

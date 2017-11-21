@@ -29,7 +29,7 @@ CustomType constructingType;
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
-%token TK_STRUCT TK_HAS
+%token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -49,7 +49,8 @@ S 			: COMANDOS
 			{
 				cout << "Regra S : COMANDOS" << endl;	//debug
 				string globalDeclar = contextStack.begin()->declar;
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << "\n" << $1.traducao << "\n\treturn 0;\n}" << endl;
+				string globalGarbageCollect = contextStack.begin()->garbageCollect;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << "\n" << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -57,11 +58,12 @@ S 			: COMANDOS
 BLOCO	: ESCOPO_INICIO COMANDOS ESCOPO_FIM
 		{
 			cout << "Regra BLOCO : COMANDOS" << endl;	//debug
-			string declar = contextStack.begin()->declar;
-			desempContexto();
 			
 			//$$.traducao = "";
-			$$.traducao = $1.traducao + declar + "\n" + $2.traducao + ident() + "}";
+			$$.traducao = $1.traducao + contextStack.begin()->declar + "\n" + $2.traducao + "\n" + contextStack.begin()->garbageCollect;
+			
+			desempContexto();
+			$$.traducao += ident() + "}";
 			$$.label = "";
 		}
 		;
@@ -145,9 +147,9 @@ COMANDO 	: E
 			}
 			| TK_ENDL
 			{
-				cout << "Regra COMANDO : TK_ENDL" << endl;	//debug
+				//cout << "Regra COMANDO : TK_ENDL" << endl;	//debug
 			}
-			;				
+			;			
 
 E 			: E OP_INFIX E {
 				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
@@ -205,6 +207,32 @@ E 			: E OP_INFIX E {
 			| INCREMENTOS
 			{
 				cout << "Regra E : INCREMENTOS" << endl;	//debug
+			}
+			
+			| TK_ID TK_MEMBER_ACCESS TK_ID
+			{
+				cout << "Regra E : " << $1.label << "'s " << $3.label << endl;	//debug
+				$1.tipo = findVar($1.label);
+				if ($1.tipo == NULL) {
+					yyerror($1.label + " nao declarada anteriormente");
+				}
+				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+					yyerror($1.label + " nao e um struct");
+				}
+				
+				CustomType &type = customTypes[$1.tipo->id];
+				Tipo *tipo = getTipo(&type, $3.label);
+				
+				//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
+				
+				if (tipo == NULL) {
+					yyerror($3.label + " nao pertence ao struct");
+				}
+				
+				$$.label = "_"+$1.label+ACCESS_VAR;
+				$$.tipo = tipo;
+				
+				$$.traducao = setAccess(&type, $1.label, $3.label);
 			}
 
 			| TK_INT
@@ -286,12 +314,34 @@ DECLARACAO 	: TIPO TK_ID
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
 			}
+			
+			| TK_ID TK_ID
+			{
+				cout << "Regra DECLARACAO : TK_ID TK_ID" <<endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao nomeia um tipo");
+				}
+				CustomType &c = customTypes[customTypesIds[$1.label]];
+				$$.traducao = newInstanceOf(&c, $2.label, true);
+				if ($$.traducao == VAR_ALREADY_DECLARED) {
+					yyerror($2.label +" ja declarada anteriormente");
+				}
+			}
 			;
 			
-DECLARACAO_STRUCT	: TK_STRUCT TK_ID TK_HAS TK_DOTS MEMBROS_STRUCT TK_BLOCO_FECHAR
+STRUCT	: TK_STRUCT
+		{
+			cout << "Regra STRUCT : TK_STRUCT" << endl;	//debug
+			constructingType = newCustomType();
+		}
+		;
+			
+DECLARACAO_STRUCT	: STRUCT TK_ID TK_HAS TK_DOTS MEMBROS_STRUCT TK_BLOCO_FECHAR
 					{
 						cout << "Regra DECLARACAO_STRUCT : TK_STRUCT TK_ID TK_HAS MEMBROS_STRUCT" << endl;	//debug
-						$$.traducao = $4.traducao;
+						if (!createCustomType(&constructingType, $2.label)) {
+							yyerror("Tipo " + $2.label + " ja declarado anteriormente");
+						}
 					}
 					;
 					
