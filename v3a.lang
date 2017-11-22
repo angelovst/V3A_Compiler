@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF_8"?>
+
+<language id="v3a" _name="V3a" version="2.0" _section="Source">
+	<metadata>
+		<property name="globs">*.v3a</property>
+	</metadata>
+	
+	
+	<styles>
+		<style id="type"	_name="Type"	map-to="def:type"/>
+		<style id="keyword" _name="Keyword" map-to="def:keyword"/>
+		<style id="function" _name="Operator/function" map-to="def:function"/>
+		<style id="comment"	_name="Comment" map-to="def:comment"/>
+	</styles>	
+	
+	<definitions>
+	
+		<!--main context-->
+		<context id="v3a">
+		
+			<include>
+			
+				<context id="types" style-ref="type">
+					<keyword>int</keyword>
+					<keyword>float</keyword>
+					<keyword>char</keyword>
+					<keyword>list</keyword>
+					<keyword>bool</keyword>
+					<keyword>string</keyword>
+				</context>
+				
+				<context id="keywords" style-ref="keyword">
+					<keyword>do</keyword>
+					<keyword>end</keyword>
+					<keyword>if</keyword>
+					<keyword>else</keyword>
+					<keyword>for</keyword>
+					<keyword>stepping</keyword>
+					<keyword>from</keyword>
+					<keyword>to</keyword>
+					<keyword>while</keyword>
+					<keyword>repeat</keyword>
+					<keyword>until</keyword>
+					<keyword>type</keyword>
+					<keyword>has</keyword>
+				</context>
+				
+				<context id="functions" style-ref="function">
+					<keyword>print</keyword>
+					<keyword>and</keyword>
+					<keyword>or</keyword>
+					<keyword>xor</keyword>
+					<keyword>xnor</keyword>
+				</context>
+				
+				<context ref="def:decimal"/>
+				<context ref="def:float"/>
+				
+				<context id="comments" style-ref="comment">
+					<start>\/\/</start>
+					<end>$</end>
+				</context>
+				
+				<context id="multiline-comments" style-ref="comment">
+					<start>\/\*</start>
+					<end>\*\/</end>
+				</context>
+				
+			</include>
+			
+		</context>
+		
+	</definitions>
+	
+</language>

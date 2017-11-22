@@ -1,39 +1,21 @@
-ex1: 	
-		clear
+CC = g++ -std=c++11
+OBJS = helper.o tipo.o struct.o
+GTK_PATH = /usr/share/gtksourceview-3.0/language-specs/
+
+all: $(OBJS)
 		lex lexica.l
 		yacc -d sintatica.y
-		g++ -std=c++11 -o glf y.tab.c -lfl
-
-		./glf < ex1.v3a
-
-ex2: 
-		clear
-		lex lexica.l
-		yacc -d sintatica.y
-		g++ -std=c++11 -o glf y.tab.c -lfl
-
-		./glf < ex2.v3a
-
-ex3: 
-		clear
-		lex lexica.l
-		yacc -d sintatica.y
-		g++ -std=c++11 -o glf y.tab.c -lfl
-
-		./glf < ex3.v3a
-
-ex4: 
-		clear
-		lex lexica.l
-		yacc -d sintatica.y
-		g++ -std=c++11 -o glf y.tab.c -lfl
-
-		./glf < ex4.v3a
-
-ex5: 
-		clear
-		lex lexica.l
-		yacc -d sintatica.y
-		g++ -std=c++11 -o glf y.tab.c -lfl
-
-		./glf < ex5.v3a
+		$(CC) -std=c++11 -o glf y.tab.c $(OBJS) -lfl
+		
+%.o: %.c
+	$(CC) -c $^
+	
+install_highlight:
+	sudo cp -i v3a.lang $(GTK_PATH)
+		
+clean:
+	rm -f y.tab.c
+	rm -f y.tab.h
+	rm -f glf
+	rm -f *.o
+	rm -f lex.yy.c
