@@ -56,13 +56,15 @@ Tipo* resolverTipo (Tipo *a, Tipo *b) {
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
 	if (var1->tipo->id == var2->tipo->id) {
+		*label1 = var1->label;
+		*label2 = var2->label;
 		return "";
 	}
 	if ((getGroup(var1->tipo)&getGroup(var2->tipo)) == 0 || belongsTo(var1->tipo, GROUP_UNCASTABLE) || belongsTo(var2->tipo, GROUP_UNCASTABLE)) {
 		return INVALID_CAST;
 	}
 	int cast = var1->tipo->id - var2->tipo->id;
-	
+
 	if (cast < 0) {	//cast var1 para var2
 		*label1 = generateVarLabel();
 		declararLocal(var2->tipo, *label1);
@@ -100,6 +102,10 @@ string traducaoLAPadrao (void *args)  {
 	
 	string varALabel;	//labels[1]
 	string varBLabel;	//labels[3]
+
+	if (atribs[0]->tipo == NULL || atribs[1]->tipo == NULL) {
+		return VAR_UNDECLARED;
+	}
 	
 	string cast = implicitCast (atribs[0], atribs[1], &varALabel, &varBLabel);
 	if (cast == INVALID_CAST) {

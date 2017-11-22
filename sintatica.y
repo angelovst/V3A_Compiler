@@ -175,6 +175,8 @@ E 			: E OP_INFIX E {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
 				} else if (traducao == VAR_ALREADY_DECLARED) {
 					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (traducao == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
 				}	
 				
 				$$.traducao += traducao;

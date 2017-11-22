@@ -43,6 +43,7 @@
 #define INVALID_CAST "invalid cast"
 #define VAR_ALREADY_DECLARED "already declared"
 #define VOID_POINTER "void pointer"
+#define VAR_UNDECLARED "var undeclared"
 
 #define BOOL_TRUE "true"
 #define BOOL_FALSE "false"
