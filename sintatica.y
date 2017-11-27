@@ -10,7 +10,6 @@
 #include "struct.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
-
 using namespace std;
 
 int yylex(void);
@@ -151,36 +150,213 @@ COMANDO 	: E
 			}
 			;			
 
-E 			: E OP_INFIX E {
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
-				void *args[4];
-				string traducao;
-				
-				$$.label = generateVarLabel();	//retorno
-				if ($2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
-					$$.tipo = resolverTipo($1.tipo, $3.tipo);
-				} else {
-					$$.tipo = (*$2.tipo->retornos)[0];
-				}
-				declararLocal($$.tipo, $$.label);
-				$$.traducao = $1.traducao + $3.traducao;
-				
-				args[0] = &$1;
-				args[1] = &$3;
-				args[2] = &$$.label;
-				args[3] = &$2.label;
-				
-				traducao = $2.tipo->traducaoParcial((void*)args);
-				if (traducao == INVALID_CAST) {
+E 			: E TK_ATRIB E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
-				} else if (traducao == VAR_ALREADY_DECLARED) {
+				} else if (retorno == VAR_ALREADY_DECLARED) {
 					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
-				} else if (traducao == VAR_UNDECLARED) {
+				} else if (retorno == VAR_UNDECLARED) {
 					yyerror("Variavel nao declarada");
-				}	
-				
-				$$.traducao += traducao;
-				
+				}
+
+				$$ = atrib;
+			}
+			| E TK_PLUS E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MINUS E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MULT E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_DIV E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_AND E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_OR E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_DIFERENTE E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_IGUAL E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MAIOR E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MENOR E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MAIORI E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
+			}
+			| E TK_MENORI E {
+
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
+				atributos atrib;
+				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+
+				$$ = atrib;
 			}
 			| '(' TIPO ')' E
 			{	
@@ -380,81 +556,6 @@ DECLARACAO_NUMERO	: TK_ID
 						}
 					}
 					;			
-			
-OP_INFIX	: TK_PLUS
-			{
-				cout << "Regra OP_INFIX : TK_PLUS" << endl;	//debug
-				$$.label = "+";
-				$$.tipo = &tipo_arithmetic_operator;
-			}
-			| TK_MINUS
-			{
-				cout << "Regra OP_INFIX : TK_MINUS" << endl;	//debug
-				$$.label = "-";
-				$$.tipo = &tipo_arithmetic_operator;
-			}
-			| TK_MULT
-			{
-				cout << "Regra OP_INFIX : TK_MULT" << endl;	//debug
-				$$.label = "*";
-				$$.tipo = &tipo_arithmetic_operator;
-			}
-			| TK_DIV {
-				cout << "Regra OP_INFIX : TK_DIV" << endl;	//debug
-				$$.label = "/";
-				$$.tipo = &tipo_arithmetic_operator;
-			}
-			| TK_MOD {
-				cout << "Regra OP_INFIX : TK_MOD" << endl;	//debug
-				$$.label = "%";
-				$$.tipo = &tipo_arithmetic_operator;
-			}
-			| TK_AND  {
-				cout << "Regra OP_INFIX : TK_AND" << endl;	//debug
-				$$.label = "&&";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_OR {
-				cout << "Regra OP_INFIX : TK_OR" << endl;	//debug
-				$$.label = "||";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_DIFERENTE  {
-				cout << "Regra OP_INFIX : TK_DIFERENTE" << endl;	//debug
-				$$.label = "!=";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_IGUAL  {
-				cout << "Regra OP_INFIX : TK_IGUAL" << endl;	//debug
-				$$.label = "==";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_MAIOR {
-				cout << "Regra OP_INFIX : TK_MAIOR" << endl;	//debug
-				$$.label = ">";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_MENOR  {
-				cout << "Regra OP_INFIX : TK_MENOR" << endl;	//debug
-				$$.label = "<";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_MAIORI  {
-				cout << "Regra OP_INFIX : TK_MAIORI" << endl;	//debug
-				$$.label = ">=";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_MENORI  {
-				cout << "Regra OP_INFIX : TK_MENORI" << endl;	//debug
-				$$.label = "<=";
-				$$.tipo = &tipo_logic_operator;
-			}
-			| TK_ATRIB {
-				cout << "Regra OP_INFIX : TK_ATRIB" << endl;	//debug
-				$$.label = "=";
-				$$.tipo = &tipo_atrib_operator;
-			}
-			;
 
 INCREMENTOS	: TK_ID SINAL_DUPL
 			{
@@ -786,9 +887,9 @@ LOOP_ALT	: TK_BREAK
 			}
 			| TK_BREAK '(' TK_INT ')' {
 				cout << "Regra LOOP_ALT : TK_BREAK ( TK_INT )" << endl;	//debug
-				LoopLabel* loop = getLoop(stoi($3.label));
+				LoopLabel* loop = getLoop(stoi($3.label) - 1);
 				
-				if (loop == NULL) yyerror("Break com deve ser usado dentro de um loop");
+				if (loop == NULL) yyerror("Break com deve ser usado dentro de um loop\n\tou\n\tArgumento Invalido");
 
 				$$.traducao = newLine("goto " + loop->fim);
 			}
