@@ -23,6 +23,7 @@ std::string generateLabel (void);
 
 //VARIAVEIS GLOBAIS
 extern unsigned int line;	//linha na qual o parser esta, usado para erros
+extern std::list<atributos> varSwitch; //lista para ser usada com switch aninhados e usar a variavel certa para comparar
 
 //Pilha de labels
 extern std::list<LoopLabel> loopStack;

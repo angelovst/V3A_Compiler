@@ -11,7 +11,6 @@
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
-
 int yylex(void);
 void yyerror(string);
 
@@ -25,7 +24,7 @@ CustomType constructingType;
 %}
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
-%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT
+%token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT TK_SWITCH TK_CASE TK_DEFAULT
 %token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
@@ -643,6 +642,63 @@ CONTROLE	: TK_IF E BLOCO
 			{
 				cout << "Regra CONTROLE : LOOP_INICIO LOOP LOOP_FIM" << endl;	//debug
 				$$.traducao = $1.traducao;
+			}
+			| TK_SWITCH CASE_VAR TK_DOTS TK_ENDL SWITCH_ALT
+			{
+				cout << "Regra CONTROLE : TK_SWITCH TK_ID TK_DOTS SWITCH_ALT" << endl;  //debug
+
+				string var = generateVarLabel();
+				string fim = generateLabel();
+
+				declararLocal(&tipo_int, var);
+
+				$$.traducao = $5.traducao;
+				varSwitch.pop_front();
+			}
+			;
+CASE_VAR	: TK_ID
+			{
+				cout << "Regra CASE_VAR : TK_ID" << endl;
+				$1.tipo = findVar($1.label);
+				if ($1.tipo == NULL) {
+					yyerror($1.label + " nao declarada anteriormente");
+				}
+				varSwitch.push_front($1);
+
+			}
+
+SWITCH_ALT	: CASE SWITCH_ALT
+			{
+				cout << "Regra SWITCH_ALT : CASE SWITCH_ALT" << endl;
+
+				$$.traducao = $1.traducao + $2.traducao;
+			}
+			| CASE
+			{
+				cout << "Regra SWITCH_ALT : CASE" << endl;
+				$$.traducao = $1.traducao;
+			}
+			| TK_DEFAULT BLOCO
+			{
+				cout << "Regra SWITCH_ALT : Tk_DEFAULT BLOCO" << endl;
+
+				$$.traducao = $2.traducao + "\n";
+			}
+			;
+
+CASE		: TK_CASE E BLOCO
+			{
+				cout << "Regra CASE : TK_CASE E BLOCO" << endl;
+				if(varSwitch.front().tipo != $2.tipo) {
+					yyerror("Comparacao de tipos diferentes");
+				}
+				string var = generateVarLabel();
+				string fim = generateLabel();
+
+				declararLocal(&tipo_int, var);
+
+				$$.traducao = "\n" + $2.traducao + newLine(var + " = " + $2.label + " != " + varSwitch.front().label) + newLine("if (" + var + ") goto " + fim) + $3.traducao + newLine(fim+":");;
+				$$.tipo = $2.tipo;
 			}
 			;
 

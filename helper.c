@@ -4,6 +4,9 @@
 
 unsigned int line = 1;
 
+//Pilha de Variaveis de escolha
+std::list<atributos> varSwitch;
+
 //Pilha de labels de loop
 std::list<LoopLabel> loopStack;
 

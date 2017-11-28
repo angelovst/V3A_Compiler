@@ -53,6 +53,9 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "break"		{return TK_BREAK;}
 "continue"	{return TK_CONTINUE;}
 "all"		{return TK_ALL;}
+"switch"	{return TK_SWITCH;}
+"case"		{return TK_CASE;}
+"default"	{return TK_DEFAULT;}
 
 
 "+"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_PLUS;}
@@ -60,15 +63,15 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "*"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_MULT;}
 "/"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_DIV;}
 "%"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_MOD;}
-"<-"		{ yylval.label = yytext; yylval.tipo = &tipo_atrib_operator;return TK_ATRIB;}
+"<-"		{ yylval.label = "="; yylval.tipo = &tipo_atrib_operator;return TK_ATRIB;}
 "++"		{return TK_2MAIS;}
 "--"		{return TK_2MENOS;}
 
-"~"			{return TK_NOT;}
-"and"		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_AND;}
-"or" 		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_OR;}
-"~="		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_DIFERENTE;}
-"="			{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_IGUAL;}
+"~"			{ yylval.label = "!" ; return TK_NOT;}
+"and"		{ yylval.label = "&" ; yylval.tipo = &tipo_logic_operator; return TK_AND;}
+"or" 		{ yylval.label = "|" ; yylval.tipo = &tipo_logic_operator; return TK_OR;}
+"~="		{ yylval.label = "!=" ; yylval.tipo = &tipo_logic_operator; return TK_DIFERENTE;}
+"="			{ yylval.label = "==" ; yylval.tipo = &tipo_logic_operator; return TK_IGUAL;}
 
 ">" 		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_MAIOR;}
 "<"			{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_MENOR;}
