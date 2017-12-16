@@ -16,18 +16,23 @@
 #include <map>
 
 typedef struct {
+	size_t offset;
 	Tipo tipo;
-	std::map<std::string, size_t> memberOffset;
-	std::map<std::string, Tipo> memberType;
+	std::string defaultValue;
+} CustomTypeMember;
+
+typedef struct {
+	Tipo tipo;
+	std::map<std::string, CustomTypeMember> memberType;
 } CustomType;
 
 CustomType newCustomType (void);
 bool createCustomType (CustomType *type, std::string &label);
-bool addVar (CustomType *type, Tipo *tipo, std::string &label);	//declara nova variavel dentro do tipo, retorna false se variavel ja esta declarada
+bool addVar (CustomType *type, Tipo *tipo, std::string &label, const std::string &defaultValue);	//declara nova variavel dentro do tipo, retorna false se variavel ja esta declarada
 
-Tipo* getTipo (CustomType *type, std::string &member);	//retorna tipo do membro do struct ou NULL caso struct nao possua membro
+Tipo* getTipo (CustomType *type, const std::string &member);	//retorna tipo do membro do struct ou NULL caso struct nao possua membro
 
-std::string setAccess (CustomType *type, std::string &instance, std::string &member);	//atribui valor do membro a variavel de acesso
+std::string setAccess (CustomType *type, const std::string &instance, const std::string &member);	//atribui valor do membro a variavel de acesso
 
 std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage);	//declara nova instancia do struct e marca a instancia para ser excluida ao fim do bloco ou nao
 

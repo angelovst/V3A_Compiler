@@ -358,9 +358,25 @@ MEMBROS_STRUCT	:	MEMBRO_STRUCT MEMBROS_STRUCT
 MEMBRO_STRUCT	: TIPO TK_ID
 				{
 					cout << "Regra MEMBRO_STRUCT : TIPO TK_ID" << endl;	//debug
-					if (!addVar(&constructingType, $1.tipo, $2.label)) {
+					if (!addVar(&constructingType, $1.tipo, $2.label, "")) {
 						yyerror("Variavel " + $2.label + " ja declarada no struct");
 					}			
+				}
+				| TIPO TK_ID TK_ATRIB E
+				{
+					cout << "Regra MEMBRO_STRUCT : TIPO TK_ID TK_ATRIB E" << endl;	//debug
+					if (!belongsTo($4.tipo, getGroup($1.tipo)) || resolverTipo($1.tipo, $4.tipo) != $1.tipo) {
+						yyerror("Nao e possivel converter tipo " + $4.tipo->trad + " para " + $1.tipo->trad);
+					}
+					
+					std::string tmp;
+					$$.tipo = $1.tipo;
+					
+					$$.traducao = implicitCast(&$$, &$1, &$$.label, &tmp);
+					
+					if (!addVar(&constructingType, $1.tipo, $2.label, tmp)) {
+						yyerror("Variavel " + $2.label + " ja declarada no struct");
+					}	
 				}
 				| TK_ENDL
 				;
