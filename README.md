@@ -61,5 +61,14 @@ bob's number <- 0
 bob's initial <- 'b'
 
 b <- bob's initial
+
+switch a :
+	case 1 do:
+		print 1
+	case 2 do:
+		print 2
+	default do:
+		print a
+end
 ```
 

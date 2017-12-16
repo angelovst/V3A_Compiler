@@ -43,6 +43,7 @@
 #define INVALID_CAST "invalid cast"
 #define VAR_ALREADY_DECLARED "already declared"
 #define VOID_POINTER "void pointer"
+#define VAR_UNDECLARED "var undeclared"
 
 #define BOOL_TRUE "true"
 #define BOOL_FALSE "false"
@@ -87,6 +88,7 @@ std::string castPadrao (std::string &dst, struct _Tipo *selfT, struct _Tipo *fro
 //FUNCOES DE OPERADORES
 std::string traducaoLAPadrao (void *args);	//args = (atributos *varA, atributos *varB, string *retorno, string *operador)
 std::string traducaoAtribuicao (void *args);	//args = (atributos *varA, atributos *varB, string *retorno)
+std::string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno);
 
 //CONTEXTO
 void empContexto (void);
