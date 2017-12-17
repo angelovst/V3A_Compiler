@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include "helper.h"
 #include "struct.h"
+#include "matrix.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
@@ -25,9 +26,10 @@ CustomType constructingType;
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT TK_SWITCH TK_CASE TK_DEFAULT
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_LIST TK_TIPO_STR
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
+%token TK_OPEN_MEMBER TK_CLOSE_MEMBER
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -490,6 +492,18 @@ DECLARACAO 	: TIPO TK_ID
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $4.tipo->trad);
 				}
 				$$.traducao = $1.traducao + $4.traducao + atrib;
+			}
+			
+			| TIPO TK_TIPO_MATRIX TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+			{
+				cout << "Regra DECLARACAO : TIPO TK_TIPO_MATRIX TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+				//todo: set the correct type
+				if(!declararLocal(&tipo_ptr, $3.label)) {
+        			yyerror("Variavel ja declarada");
+				}
+				
+				$$.traducao = $5.label + $8.label;
+				$$.traducao += newMatrix($1.tipo, $3.label, $5.label, $8.label);
 			}
 			
 			| TK_ID TK_ID

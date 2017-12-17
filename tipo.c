@@ -14,6 +14,9 @@ Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &tr
 Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
 Tipo tipo_atrib_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoAtribuicao, NULL, NULL };
 
+//mapa de tipos de ponteiros
+std::map<Tipo*, Tipo> tipo_ptrs;
+
 //Pilha de variaveis
 std::list<Context> contextStack;
 unsigned int contextDepth = 0;
@@ -52,6 +55,16 @@ Tipo* resolverTipo (Tipo *a, Tipo *b) {
 		return b;
 	}
 	return a;	//a e o tipo do retorno
+}
+
+Tipo* newPtr (Tipo *pointsTo) {
+	if (tipo_ptrs.count(pointsTo) == 0) {
+		tipo_ptrs[pointsTo] = *pointsTo;
+		tipo_ptrs[pointsTo].id |= GROUP_PTR;
+		tipo_ptrs[pointsTo].trad = TIPO_PTR_TRAD;
+	}
+
+	return &tipo_ptrs[pointsTo];
 }
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {

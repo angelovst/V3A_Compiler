@@ -24,7 +24,7 @@ bool createCustomType (CustomType *type, std::string &label) {
 	return true;
 }
 
-bool addVar (CustomType *type, Tipo *tipo, std::string &label, const std::string &defaultValue) {
+bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::string &defaultValue) {
 	if (type->memberType.count(label)) {
 		return false;
 	}

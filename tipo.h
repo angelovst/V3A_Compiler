@@ -80,6 +80,8 @@ int getGroup (Tipo *tipo);
 bool belongsTo (Tipo *tipo, int group);
 Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno entre uma operacao envolvendo a e b
 
+Tipo* newPtr (Tipo *pointsTo);
+
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
 
 //FUNCOES DE CAST
@@ -108,6 +110,9 @@ extern Tipo tipo_ptr;
 extern Tipo tipo_arithmetic_operator;
 extern Tipo tipo_logic_operator;
 extern Tipo tipo_atrib_operator;
+
+//mapa de tipos de ponteiros
+extern std::map<Tipo*, Tipo> tipo_ptrs;
 
 //Pilha de variaveis
 extern std::list<Context> contextStack;

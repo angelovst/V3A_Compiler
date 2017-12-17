@@ -32,6 +32,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "float"		{return TK_TIPO_FLOAT;}
 "bool"		{return TK_TIPO_BOOL;}
 "char"		{return TK_TIPO_CHAR;}
+"matrix"	{return TK_TIPO_MATRIX;}
 "list"		{return TK_TIPO_LIST;}
 
 "type"		{return TK_STRUCT;}
@@ -64,8 +65,8 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "/"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_DIV;}
 "%"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_MOD;}
 "<-"		{ yylval.label = "="; yylval.tipo = &tipo_atrib_operator;return TK_ATRIB;}
-"++"		{return TK_2MAIS;}
-"--"		{return TK_2MENOS;}
+"++"		{ return TK_2MAIS; }
+"--"		{ return TK_2MENOS; }
 
 "~"			{ yylval.label = "!" ; return TK_NOT;}
 "and"		{ yylval.label = "&" ; yylval.tipo = &tipo_logic_operator; return TK_AND;}
@@ -79,7 +80,10 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "<="		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_MENORI;}
 ":"			{ return TK_DOTS;}
 
-[(){}[\];,]	{ return *yytext; }
+"["	{ return TK_OPEN_MEMBER; }
+"]" { return TK_CLOSE_MEMBER; }
+
+[(){}[\];,]		{ return *yytext; }
 
 {INT}			{ yylval.label = yytext; return TK_INT; }
 {FLOAT}			{ yylval.label = yytext; return TK_FLOAT; }
