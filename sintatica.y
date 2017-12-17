@@ -9,6 +9,7 @@
 #include "helper.h"
 #include "struct.h"
 #include "matrix.h"
+#include "list.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
@@ -30,6 +31,7 @@ CustomType constructingType;
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
+%token TK_PUSH
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -149,6 +151,25 @@ COMANDO 	: E
 			| TK_ENDL
 			{
 				//cout << "Regra COMANDO : TK_ENDL" << endl;	//debug
+			}
+			| TK_ID TK_PUSH E
+			{
+				cout << "Regra COMAND : TK_ID TK_PUSH E" << endl;	//debug
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				Tipo *dataT;
+				std::string data;
+				if (t == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				dataT = getTipo(t, TYPE_MEMBER);
+				
+				if (!belongsTo($3.tipo, getGroup(dataT)) || resolverTipo(dataT, $3.tipo) != dataT) {
+					yyerror("Nao foi possivel converter " + $3.tipo->trad + " para " + dataT->trad);
+				}
+				
+				$$.tipo = dataT;
+				$$.traducao = $3.traducao + implicitCast(&$$, &$3, &$$.label, &data);
+				$$.traducao += push_back(t, $1.label, data);
 			}
 			;			
 
@@ -623,6 +644,14 @@ DECLARACAO 	: TIPO TK_ID
 				}
 				
 				$$.traducao += tdr;
+			}
+			| TIPO TK_TIPO_LIST TK_ID
+			{
+				cout << "Regra DECLARACAO : TIPO TK_TIPO_LIST TK_ID" << endl;	//debug
+				if (findVar($3.label) != NULL) {
+					yyerror("Variavel " + $3.label + " ja declarada anteriormente");
+				}
+				$$.traducao = newList($1.tipo, $3.label);
 			}
 			
 			| TK_ID TK_ID
@@ -1188,11 +1217,6 @@ TIPO 		: TK_TIPO_INT
 			{
 				cout << "Regra TIPO : TK_TIPO_CHAR" << endl;	//debug
 				$$.tipo = &tipo_char;
-			}
-			| TK_TIPO_LIST
-			{
-				cout << "Regra TIPO : TK_TIPO_LIST" << endl;	//debug
-				$$.tipo = &tipo_list;
 			}
 			;
 

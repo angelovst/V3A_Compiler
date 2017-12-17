@@ -55,7 +55,7 @@ std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, 
 		return VAR_ALREADY_DECLARED;
 	}
 	
-	traducao += newMatrixInstance (&customTypes[t.tipo.id], label, true, rows, colums);
+	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, true, rows, colums);
 	return traducao;
 	
 }

@@ -25,7 +25,7 @@ typedef struct {
 } CustomType;
 
 CustomType newCustomType (void);
-bool createCustomType (CustomType *type, std::string &label);
+bool createCustomType (CustomType *type, const std::string &label);
 bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::string &defaultValue);	//declara nova variavel dentro do tipo, retorna false se variavel ja esta declarada
 
 Tipo* getTipo (CustomType *type, const std::string &member);	//retorna tipo do membro do struct ou NULL caso struct nao possua membro

@@ -21,7 +21,7 @@
 #define GROUP_NUMBER		0x40000000
 #define GROUP_BOOL			0x02000000
 #define GROUP_CHAR			0x04000000
-#define GROUP_CONTAINER 	0x08000000
+#define GROUP_NODE		 	0x08000000
 #define GROUP_FUNCTION		0x10000000
 #define GROUP_STRUCT		0x20000000
 
@@ -34,7 +34,7 @@
 
 #define TIPO_CHAR_ID	GROUP_CHAR|0x01
 
-#define TIPO_LIST_ID	GROUP_CONTAINER|0x01
+//#define TIPO_LIST_ID	GROUP_CONTAINER|0x01
 
 #define TIPO_INF_OP_ID	GROUP_FUNCTION|0x01
 
@@ -106,7 +106,6 @@ extern Tipo tipo_float;
 extern Tipo tipo_int;
 extern Tipo tipo_bool;
 extern Tipo tipo_char;
-extern Tipo tipo_list;
 extern Tipo tipo_ptr;
 
 extern Tipo tipo_arithmetic_operator;

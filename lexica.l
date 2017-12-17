@@ -84,6 +84,8 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "["	{ return TK_OPEN_MEMBER; }
 "]" { return TK_CLOSE_MEMBER; }
 
+"push"		{ return TK_PUSH; }
+
 [(){}[\];,]		{ return *yytext; }
 
 {INT}			{ yylval.label = yytext; return TK_INT; }

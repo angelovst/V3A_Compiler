@@ -15,7 +15,7 @@ CustomType newCustomType (void) {
 	return c;
 }
 
-bool createCustomType (CustomType *type, std::string &label) {
+bool createCustomType (CustomType *type, const std::string &label) {
 	if (customTypesIds.count(label) != 0) {
 		return false;
 	}

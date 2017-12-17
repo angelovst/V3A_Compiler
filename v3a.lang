@@ -53,6 +53,7 @@
 					<keyword>or</keyword>
 					<keyword>xor</keyword>
 					<keyword>xnor</keyword>
+					<keyword>push</keyword>
 				</context>
 				
 				<context ref="def:decimal"/>
