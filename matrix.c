@@ -3,12 +3,13 @@
 
 std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, const std::string &rowsVar, const std::string &columsVar) {
 	std::string traducao = "";
-	std::string accessVar = "_"+label+ACCESS_VAR;
+	std::string accessVar;
 	std::string size, ptr;
 	
 	if (!declararLocal(&type->tipo, label)) {
 		return VAR_ALREADY_DECLARED;
 	}
+	accessVar = generateVarLabel();
 	declararLocal(&type->tipo, accessVar);
 	
 	size = generateVarLabel();
@@ -26,7 +27,7 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
 		if (i->second.defaultValue != "") {
 			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
-			traducao += setAccess(type, label, i->first);
+			traducao += setAccess(type, label, i->first, accessVar);
 			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");
 		}
 	}
@@ -59,8 +60,7 @@ std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, 
 	
 }
 
-std::string setIndexAccess (CustomType *matrix, std::string &instance, std::string &rowsVar, std::string &columsVar) {
-	std::string accessVar = "_"+instance+ACCESS_VAR;
+std::string setIndexAccess (CustomType *matrix, std::string &instance, std::string &rowsVar, std::string &columsVar, const std::string &accessVar) {
 	std::string rows, colums, ptr;
 	std::string boolTmp1, boolTmp2;
 	std::string label;
@@ -83,10 +83,10 @@ std::string setIndexAccess (CustomType *matrix, std::string &instance, std::stri
 	//get bounds
 	traducao = "\n" + ident() + "//acessando membro\n";
 	traducao += newLine(ptr+" = " + "("+TIPO_PTR_TRAD+")" + "&"+rows);
-	traducao += setAccess(matrix, instance, ROWS_MEMBER);
+	traducao += setAccess(matrix, instance, ROWS_MEMBER, accessVar);
 	traducao += newLine("memcpy("+ptr+", "+accessVar+", "+std::to_string(tipo_int.size)+")");
 	traducao += newLine(ptr+" = " + "("+TIPO_PTR_TRAD+")" + "&"+colums);
-	traducao += setAccess(matrix, instance, COLUMS_MEMBER);
+	traducao += setAccess(matrix, instance, COLUMS_MEMBER, accessVar);
 	traducao += newLine("memcpy("+ptr+", "+accessVar+", "+std::to_string(tipo_int.size)+")");
 	
 	//check bounds in range
@@ -104,7 +104,7 @@ std::string setIndexAccess (CustomType *matrix, std::string &instance, std::stri
 	traducao += newLine(colums + " = " + colums + "+" + columsVar);
 	traducao += newLine(colums + " = " + colums + "*" + std::to_string(matrix->memberType[DATA_MEMBER].tipo.size));
 	
-	traducao += setAccess(matrix, instance, DATA_MEMBER);
+	traducao += setAccess(matrix, instance, DATA_MEMBER, accessVar);
 	traducao += newLine(accessVar + " = " + accessVar + "+" + colums) + "\n";
 	
 	return traducao;

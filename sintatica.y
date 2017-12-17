@@ -409,10 +409,11 @@ E 			: E TK_ATRIB E {
 					yyerror($3.label + " nao pertence ao struct");
 				}
 				
-				$$.label = "_"+$1.label+ACCESS_VAR;
+				$$.label = generateVarLabel();
 				$$.tipo = tipo;
+				declararLocal(&tipo_ptr, $$.label);
 				
-				$$.traducao = setAccess(&type, $1.label, $3.label);
+				$$.traducao = setAccess(&type, $1.label, $3.label, $$.label);
 			}
 			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
 			{
@@ -444,10 +445,11 @@ E 			: E TK_ATRIB E {
 					yyerror($1.label + " nao e uma matriz");
 				}
 				
-				$$.label = "_"+$1.label+ACCESS_VAR;
+				$$.label = generateVarLabel();
 				$$.tipo = tipo;
+				declararLocal(&tipo_ptr, $$.label);
 				
-				$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label);
+				$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label, $$.label);
 				
 			}
 

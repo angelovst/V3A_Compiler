@@ -45,9 +45,8 @@ Tipo* getTipo (CustomType *type, const std::string &member) {
 	return &(type->memberType[member].tipo);
 }
 
-std::string setAccess (CustomType *type, const std::string &instance, const std::string &member) {
+std::string setAccess (CustomType *type, const std::string &instance, const std::string &member, const std::string &accessVar) {
 	std::string traducao;
-	std::string accessVar = "_"+instance+ACCESS_VAR;
 	size_t offset = type->memberType[member].offset;
 	Tipo *t = getTipo(type, member);
 	
@@ -58,21 +57,25 @@ std::string setAccess (CustomType *type, const std::string &instance, const std:
 
 std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage) {
 	std::string traducao = "";
-	std::string accessVar = "_"+label+ACCESS_VAR;
+	std::string accessVar, ptr;
 	
 	if (!declararLocal(&type->tipo, label)) {
 		return VAR_ALREADY_DECLARED;
 	}
+	accessVar = generateVarLabel();
 	declararLocal(&tipo_ptr, accessVar);
 	
 	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
 	
 	//atribuir valores default as variaveis
 	traducao += ident() + "//DEFAULT VALUES\n";
+	ptr = generateVarLabel();
+	declararLocal(&tipo_ptr, ptr);
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
 		if (i->second.defaultValue != "") {
-			traducao += setAccess(type, label, i->first);
-			traducao += newLine("memcpy(" + accessVar + ", " + i->second.defaultValue + ", " + to_string(i->second.tipo.size) + ")");
+			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
+			traducao += setAccess(type, label, i->first, accessVar);
+			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");
 		}
 	}
 	traducao += "\n";

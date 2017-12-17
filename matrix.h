@@ -8,4 +8,4 @@
 
 std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, const std::string &colums);
 
-std::string setIndexAccess (CustomType *matrix, std::string &instance, std::string &rowsVar, std::string &columsVar);
+std::string setIndexAccess (CustomType *matrix, std::string &instance, std::string &rowsVar, std::string &columsVar, const std::string &accessVar);
