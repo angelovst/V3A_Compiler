@@ -11,7 +11,7 @@ CustomType* nodeType (Tipo *tipo) {
 		addVar(&add, &tipo_ptr, NEXT_MEMBER, "NULL");
 		addVar(&add, &tipo_ptr, PREVIOUS_MEMBER, "NULL");
 		
-		createCustomType(&add, std::to_string(tipo->id));
+		customTypes[t.id] = add;
 	}
 	return &customTypes[t.id];
 }
@@ -161,7 +161,7 @@ std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, 
 
 std::string push_back (CustomType *list, const std::string &label, const std::string &data) {
 	std::string traducao;
-	std::string last, ldata, dataAddr;
+	std::string last, ldata, dataAddr, n;
 	std::string check, ifLabel, elseLabel;
 	Tipo *t = getTipo(list, TYPE_MEMBER);
 	
@@ -169,6 +169,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	ldata = generateVarLabel();
 	dataAddr = generateVarLabel();
 	check = generateVarLabel();
+	n = generateVarLabel();
 	
 	declararLocal(&tipo_ptr, last);
 	declararLocal(&tipo_ptr, ldata);
@@ -190,7 +191,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	//else list.first = list.last = newNode(data)
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
-	traducao += newInstanceOf(nodeType(t), last, false);
+	traducao += newInstanceOf(nodeType(t), n, false);
 	traducao += setAccess(nodeType(t), last, DATA_MEMBER, ldata);
 	traducao += newLine(dataAddr+" = ("+TIPO_PTR_TRAD+")&"+data);
 	traducao += newLine("memcpy("+ldata+", "+dataAddr+", "+std::to_string(t->size)+")");

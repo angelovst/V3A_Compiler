@@ -154,16 +154,19 @@ COMANDO 	: E
 			}
 			| TK_ID TK_PUSH E
 			{
-				cout << "Regra COMAND : TK_ID TK_PUSH E" << endl;	//debug
+				cout << "Regra COMANDO : TK_ID TK_PUSH E" << endl;	//debug
 				CustomType *t = &customTypes[customTypesIds[$1.label]];
 				Tipo *dataT;
 				std::string data;
 				if (t == NULL) {
-					yyerror($1.label + " nao e uma lista");
+					yyerror($1.label + " nao declarado ou nao e uma lista");
 				}
 				dataT = getTipo(t, TYPE_MEMBER);
+				if (dataT == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
 				
-				if (!belongsTo($3.tipo, getGroup(dataT)) || resolverTipo(dataT, $3.tipo) != dataT) {
+				if ((getGroup($3.tipo)&getGroup(dataT)) != getGroup($3.tipo) || resolverTipo(dataT, $3.tipo) != dataT) {
 					yyerror("Nao foi possivel converter " + $3.tipo->trad + " para " + dataT->trad);
 				}
 				
