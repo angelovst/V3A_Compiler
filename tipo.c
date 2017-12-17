@@ -14,6 +14,9 @@ Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &tr
 Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
 Tipo tipo_atrib_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoAtribuicao, NULL, NULL };
 
+//mapa de tipos de ponteiros
+std::map<Tipo*, Tipo> tipo_ptrs;
+
 //Pilha de variaveis
 std::list<Context> contextStack;
 unsigned int contextDepth = 0;
@@ -48,10 +51,26 @@ Tipo* resolverTipo (Tipo *a, Tipo *b) {
 		return b;
 	} else if (b == NULL) {
 		return a;
-	} else if (a->id < b->id) {	//b e o tipo do retorno
+	} else if (a->id < b->id && !belongsTo(b, GROUP_PTR)) {	//b e o tipo do retorno
 		return b;
 	}
 	return a;	//a e o tipo do retorno
+}
+
+Tipo* newPtr (Tipo *pointsTo) {
+	if (tipo_ptrs.count(pointsTo) == 0) {
+		tipo_ptrs[pointsTo] = *pointsTo;
+		tipo_ptrs[pointsTo].id |= GROUP_PTR;
+		tipo_ptrs[pointsTo].trad = TIPO_PTR_TRAD;
+	}
+
+	return &tipo_ptrs[pointsTo];
+}
+
+Tipo nonPtr (Tipo *ptr) {
+	Tipo t = *ptr;
+	t.id = t.id & ~GROUP_PTR;
+	return t;
 }
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
@@ -63,9 +82,9 @@ string implicitCast (atributos *var1, atributos *var2, string *label1, string *l
 	if ((getGroup(var1->tipo)&getGroup(var2->tipo)) == 0 || belongsTo(var1->tipo, GROUP_UNCASTABLE) || belongsTo(var2->tipo, GROUP_UNCASTABLE)) {
 		return INVALID_CAST;
 	}
-	int cast = var1->tipo->id - var2->tipo->id;
+	//int cast = var1->tipo->id - var2->tipo->id;
 
-	if (cast < 0) {	//cast var1 para var2
+	if (var1->tipo->id < var2->tipo->id && !belongsTo(var2->tipo, GROUP_PTR) ) {	//cast var1 para var2
 		*label1 = generateVarLabel();
 		declararLocal(var2->tipo, *label1);
 		*label2 = var2->label;
@@ -85,7 +104,7 @@ string castPadrao (std::string &dst, struct _Tipo *selfT, struct _Tipo *fromT, s
 	if (belongsTo(fromT, GROUP_PTR)) {
 		dstAddr = generateVarLabel();
 		declararLocal(&tipo_ptr, dstAddr);
-		traducao = newLine(dstAddr + " = &" + dst) + newLine("memcpy("+dstAddr+", "+fromL+", "+to_string(selfT->size)+")");
+		traducao = newLine(dstAddr + " = (" + TIPO_PTR_TRAD + ")&" + dst) + newLine("memcpy("+dstAddr+", "+fromL+", "+to_string(selfT->size)+")");
 	} else {
 		traducao = newLine(dst + " = (" + selfT->trad + ")" + fromL);
 	}
@@ -148,7 +167,7 @@ string traducaoAtribuicao (void *args) {
 		if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
 			rvalueAddr = generateVarLabel();
 			declararLocal(&tipo_ptr, rvalueAddr);
-			traducao = newLine(rvalueAddr + " = &" + rvalue->label);
+			traducao = newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
 		} else {
 			if (rvalue->tipo->size == 0) {
 				return VOID_POINTER;
@@ -182,7 +201,7 @@ Tipo* findVar(string &label) {
 	return (i == contextStack.end()) ? NULL : i->vars[label];
 }
 
-bool declararGlobal (Tipo *tipo, std::string &label) {
+bool declararGlobal (Tipo *tipo, const std::string &label) {
 	list<Context>::iterator bottom = contextStack.end()--;
 	if (bottom->vars.count(label)) {
 		return false;
@@ -192,7 +211,7 @@ bool declararGlobal (Tipo *tipo, std::string &label) {
 	return true;
 }
 
-bool declararLocal (Tipo *tipo, std::string &label) {
+bool declararLocal (Tipo *tipo, const std::string &label) {
 	list<Context>::iterator top = contextStack.begin();
 
 	if (top->vars.count(label)) {

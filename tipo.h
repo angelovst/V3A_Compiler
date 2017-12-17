@@ -12,7 +12,7 @@
 #define TIPO_BOOL_TRAD "unsigned char"
 #define TIPO_CHAR_TRAD "char"
 #define TIPO_LIST_TRAD "void*"
-#define TIPO_PTR_TRAD "void*"
+#define TIPO_PTR_TRAD "char*"
 #define TIPO_INF_OP_TRAD ""
 
 //id consiste em duas partes, primeiros 8bits definem a qual grupo o tipo pertence, os demais definem qual nivel ele esta
@@ -80,6 +80,10 @@ int getGroup (Tipo *tipo);
 bool belongsTo (Tipo *tipo, int group);
 Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno entre uma operacao envolvendo a e b
 
+Tipo* newPtr (Tipo *pointsTo);
+
+Tipo nonPtr (Tipo *ptr);
+
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
 
 //FUNCOES DE CAST
@@ -94,8 +98,8 @@ std::string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, 
 void empContexto (void);
 void desempContexto (void);
 Tipo* findVar(std::string &label);
-bool declararGlobal (Tipo *tipo, std::string &label);
-bool declararLocal (Tipo *tipo, std::string &label);
+bool declararGlobal (Tipo *tipo, const std::string &label);
+bool declararLocal (Tipo *tipo, const std::string &label);
 
 //Tipos
 extern Tipo tipo_float;
@@ -108,6 +112,9 @@ extern Tipo tipo_ptr;
 extern Tipo tipo_arithmetic_operator;
 extern Tipo tipo_logic_operator;
 extern Tipo tipo_atrib_operator;
+
+//mapa de tipos de ponteiros
+extern std::map<Tipo*, Tipo> tipo_ptrs;
 
 //Pilha de variaveis
 extern std::list<Context> contextStack;
