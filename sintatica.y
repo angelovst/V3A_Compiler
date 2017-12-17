@@ -42,6 +42,7 @@ CustomType constructingType;
 %left TK_PLUS TK_MINUS
 %left TK_MULT TK_DIV TK_MOD
 %right TK_2MAIS TK_2MENOS
+%right TK_OPEN_MEMBER TK_MEMBER_ACCESS
 
 %%
 
@@ -50,7 +51,7 @@ S 			: COMANDOS
 				cout << "Regra S : COMANDOS" << endl;	//debug
 				string globalDeclar = contextStack.begin()->declar;
 				string globalGarbageCollect = contextStack.begin()->garbageCollect;
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<stdlib.h>\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << "\n" << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std; \n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << "\n" << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -413,6 +414,42 @@ E 			: E TK_ATRIB E {
 				
 				$$.traducao = setAccess(&type, $1.label, $3.label);
 			}
+			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+			{
+				cout << "Regra E : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+				$1.tipo = findVar($1.label);
+				if ($1.tipo == NULL) {
+					yyerror($1.label + " nao declarada anteriormente");
+				}
+				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+					cout << "here" << endl;
+					yyerror($1.label + " nao e uma matriz");
+				}
+				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int || !belongsTo($6.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $6.tipo) != &tipo_int) {
+					yyerror("Argumento de indice da matrix deve ser do tipo int");
+				}
+				
+				std::string tdr;
+				std::string c1, c2;
+				CustomType &type = customTypes[$1.tipo->id];
+				Tipo *tipo = getTipo(&type, DATA_MEMBER);
+				
+				$$.traducao = $3.traducao + $6.traducao;
+				
+				$$.tipo = &tipo_int;
+				$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
+				$$.traducao += implicitCast(&$$, &$6, &$$.label, &c2);
+				
+				if (tipo == NULL) {
+					yyerror($1.label + " nao e uma matriz");
+				}
+				
+				$$.label = "_"+$1.label+ACCESS_VAR;
+				$$.tipo = tipo;
+				
+				$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label);
+				
+			}
 
 			| TK_INT
 			{
@@ -497,13 +534,26 @@ DECLARACAO 	: TIPO TK_ID
 			| TIPO TK_TIPO_MATRIX TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
 			{
 				cout << "Regra DECLARACAO : TIPO TK_TIPO_MATRIX TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
-				//todo: set the correct type
-				if(!declararLocal(&tipo_ptr, $3.label)) {
-        			yyerror("Variavel ja declarada");
+				if (!belongsTo($5.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $5.tipo) != &tipo_int || !belongsTo($8.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $8.tipo) != &tipo_int) {
+					yyerror("Argumento de dimensao da matrix deve ser do tipo int");
 				}
 				
-				$$.traducao = $5.label + $8.label;
-				$$.traducao += newMatrix($1.tipo, $3.label, $5.label, $8.label);
+				std::string tdr;
+				std::string c1, c2;
+				
+				$$.traducao = $5.traducao + $8.traducao;
+				
+				$$.tipo = &tipo_int;
+				$$.traducao += implicitCast(&$$, &$5, &$$.label, &c1);
+				$$.traducao += implicitCast(&$$, &$8, &$$.label, &c2);
+				
+				tdr = newMatrix($1.tipo, $3.label, c1, c2);
+				if (tdr == VAR_ALREADY_DECLARED) {
+					yyerror($3.label + " ja declarada anteriormente");
+				}
+				
+				$$.traducao += tdr;
+				
 			}
 			
 			| TK_ID TK_ID
@@ -533,12 +583,14 @@ DECLARACAO_STRUCT	: STRUCT TK_ID TK_HAS TK_DOTS MEMBROS_STRUCT TK_BLOCO_FECHAR
 						if (!createCustomType(&constructingType, $2.label)) {
 							yyerror("Tipo " + $2.label + " ja declarado anteriormente");
 						}
+						$$.traducao = $5.traducao;
 					}
 					;
 					
 MEMBROS_STRUCT	:	MEMBRO_STRUCT MEMBROS_STRUCT
 				{
 					cout << "Regra MEMBROS_STRUCT : MEMBRO_STRUCT MEMBROS_STRUCT" << endl;	//debug
+					$$.traducao = $1.traducao + $2.traducao;
 				}
 				|
 				{
@@ -563,28 +615,16 @@ MEMBRO_STRUCT	: TIPO TK_ID
 					std::string tmp;
 					$$.tipo = $1.tipo;
 					
-					$$.traducao = implicitCast(&$$, &$1, &$$.label, &tmp);
+					$$.traducao = $4.traducao + implicitCast(&$$, &$4, &$$.label, &tmp);
+					
+					//cout << tmp << endl;	//debug
 					
 					if (!addVar(&constructingType, $1.tipo, $2.label, tmp)) {
 						yyerror("Variavel " + $2.label + " ja declarada no struct");
 					}	
 				}
 				| TK_ENDL
-				;
-
-
-DECLARACAO_NUMERO	: TK_ID
-					{
-						cout << "Regra DECLARACAO : TK_ID" << endl;
-						$$.tipo = findVar($1.label);
-						if ($$.tipo == NULL) {
-							$$.tipo = &tipo_int;
-							declararLocal($$.tipo, $1.label);
-						} else if (!belongsTo($1.tipo, GROUP_NUMBER)) {
-							yyerror($1.label + " era esperado armazenar numero");
-						}
-					}
-					;			
+				;		
 
 INCREMENTOS	: TK_ID SINAL_DUPL
 			{
@@ -746,6 +786,19 @@ CONTROLE_ALT: TK_ELSE CONTROLE
 			}
 			;
 			
+DECLARACAO_NUMERO	: TK_ID
+					{
+						cout << "Regra DECLARACAO : TK_ID" << endl;
+						$$.tipo = findVar($1.label);
+						if ($$.tipo == NULL) {
+							$$.tipo = &tipo_int;
+							declararLocal($$.tipo, $1.label);
+						} else if (!belongsTo($1.tipo, GROUP_NUMBER)) {
+							yyerror($1.label + " era esperado armazenar numero");
+						}
+					}
+					;	
+			
 FOR	: TK_FOR
 	{
 		cout << "Regra FOR : TK_FOR" << endl;	//debug
@@ -782,28 +835,33 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				atributos *castTo;
 				string iLabel;
 				string limitInf, limitSup; 
-				string check = generateVarLabel();
-				string inc = generateVarLabel();
-				string prevValue = generateVarLabel();
+				string check;
+				string inc;
+				string prevValue;
 				string checkIncElse = generateLabel();
 				string checkIncEnd = generateLabel();
 				string checkBiggerElse = generateLabel();
 				string checkBiggerEnd = generateLabel();
 				
 				//cout << "declaring vars" << endl;	//debug;
-				final = resolverTipo($4.tipo, $6.tipo);
-				castTo = (final == $4.tipo) ? &$4 : &$6;
-				final = resolverTipo(final, $2.tipo);
-				castTo = (final == $2.tipo) ? &$2 : castTo;
+				final = resolverTipo($2.tipo, $4.tipo);
+				castTo = (final == $2.tipo) ? &$2 : &$4;
+				final = resolverTipo(final, $4.tipo);
+				castTo = (final == $4.tipo) ? &$4 : castTo;
+				final = resolverTipo(final, $6.tipo);
+				castTo = (final == $6.tipo) ? &$6 : castTo;
 				
+				
+				check = generateVarLabel();
 				declararLocal(&tipo_bool, check);
+				inc = generateVarLabel();
 				declararLocal(final, inc);
+				prevValue = generateVarLabel();
 				declararLocal(final, prevValue);
 				
 				LoopLabel* loop = getLoop(0);
 				
-				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
-				$$.traducao += $4.traducao + $6.traducao;
+				$$.traducao = $4.traducao + $6.traducao;
 				
 				//cout << "casting vars" << endl;	//debug
 				//escrever casts caso necessarios
@@ -845,6 +903,7 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
 				$$.traducao += newLine("goto " + loop->inicio);
 				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n" + $$.traducao;
 				desempLoop();
 				desempContexto();
 				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
@@ -880,8 +939,7 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				
 				LoopLabel* loop = getLoop(0);
 				
-				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n";
-				$$.traducao += $4.traducao + $6.traducao + $8.traducao;
+				$$.traducao = $4.traducao + $6.traducao + $8.traducao;
 				
 				//cout << "casting vars" << endl;	//debug
 				//escrever casts caso necessarios
@@ -912,6 +970,7 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				$$.traducao += newLine(iLabel + " = " + prevValue + "+" + inc);
 				$$.traducao += newLine("goto " + loop->inicio);
 				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n" + $$.traducao;
 				desempLoop();
 				desempContexto();
 				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
@@ -1011,7 +1070,15 @@ PRINT_ALT	: E	TK_ENDL
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao;
-				$$.label = " << " + $1.label + " << std::endl";
+				if (!belongsTo($1.tipo, GROUP_PTR)) {
+					$$.label = " << " + $1.label + " << std::endl";
+				} else {
+					std::string var;
+					Tipo t = nonPtr($1.tipo);
+					$$.tipo = &t;
+					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
+					$$.label = " << " + var + " << std::endl";
+				}
 			}
 
 			| E ',' PRINT_ALT
@@ -1021,7 +1088,15 @@ PRINT_ALT	: E	TK_ENDL
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao + $3.traducao;
-				$$.label = " << " + $1.label + " << \" \"" + $3.label;
+				if (!belongsTo($1.tipo, GROUP_PTR)) {
+					$$.label = " << " + $1.label + " << \" \" " + $3.label;
+				} else {
+					std::string var;
+					Tipo t = nonPtr($1.tipo);
+					$$.tipo = &t;
+					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
+					$$.label = " << " + var + " << \" \" " + $3.label;
+				}
 			}
 			;
 

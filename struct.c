@@ -32,6 +32,7 @@ bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::
 	type->memberType[label].offset = type->tipo.size;
 	type->memberType[label].tipo = *tipo;
 	type->memberType[label].tipo.id |= GROUP_PTR;
+	type->memberType[label].defaultValue = defaultValue;
 	
 	type->tipo.size += tipo->size;
 	return true;
@@ -64,10 +65,10 @@ std::string newInstanceOf (CustomType *type, std::string &label, bool collectGar
 	}
 	declararLocal(&tipo_ptr, accessVar);
 	
-	traducao += newLine(label + " = " + "malloc("+std::to_string(type->tipo.size)+")");
+	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
 	
 	//atribuir valores default as variaveis
-	traducao += ident() + "//DEFAULT VALUES";
+	traducao += ident() + "//DEFAULT VALUES\n";
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
 		if (i->second.defaultValue != "") {
 			traducao += setAccess(type, label, i->first);
