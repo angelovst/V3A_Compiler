@@ -27,6 +27,8 @@
 					<keyword>list</keyword>
 					<keyword>bool</keyword>
 					<keyword>string</keyword>
+					<keyword>matrix</keyword>
+					<keyword>vector</keyword>
 				</context>
 				
 				<context id="keywords" style-ref="keyword">

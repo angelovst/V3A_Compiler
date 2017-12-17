@@ -100,9 +100,9 @@ std::string setIndexAccess (CustomType *matrix, std::string &instance, std::stri
 	traducao += ident() + label + ":\n";
 	
 	//set access to index
-	traducao += newLine(colums + " = " + rowsVar + "*" + rows);
-	traducao += newLine(colums + " = " + colums + "+" + columsVar);
-	traducao += newLine(colums + " = " + colums + "*" + std::to_string(matrix->memberType[DATA_MEMBER].tipo.size));
+	traducao += newLine(rows + " = " + rowsVar + "*" + colums);
+	traducao += newLine(rows + " = " + rows + "+" + columsVar);
+	traducao += newLine(rows + " = " + rows + "*" + std::to_string(matrix->memberType[DATA_MEMBER].tipo.size));
 	
 	traducao += setAccess(matrix, instance, DATA_MEMBER, accessVar);
 	traducao += newLine(accessVar + " = " + accessVar + "+" + colums) + "\n";

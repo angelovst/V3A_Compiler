@@ -70,5 +70,24 @@ switch a :
 	default do:
 		print a
 end
+
+int matrix m1[5][5]
+
+for i from 0 to m1's rows do:
+	for j from 0 to m1's colums do:
+		m1[i][j] <- i * m1's rows + j
+		print m1[i][j]
+	end
+end
+
+m2d <- 4
+float vector m2[m2d]	//vetor = matriz coluna
+
+for i from 0 to m2's rows do:
+	m2[i] <- i/2.0
+	print m2[i]
+end
+
+
 ```
 

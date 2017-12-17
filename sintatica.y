@@ -26,7 +26,7 @@ CustomType constructingType;
 
 %token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT TK_SWITCH TK_CASE TK_DEFAULT
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_LIST TK_TIPO_STR
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_VECTOR TK_TIPO_LIST TK_TIPO_STR
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
@@ -452,6 +452,46 @@ E 			: E TK_ATRIB E {
 				$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label, $$.label);
 				
 			}
+			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+			{
+				cout << "Regra E : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+				$1.tipo = findVar($1.label);
+				if ($1.tipo == NULL) {
+					yyerror($1.label + " nao declarada anteriormente");
+				}
+				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+					cout << "here" << endl;
+					yyerror($1.label + " nao e uma matriz");
+				}
+				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int) {
+					yyerror("Argumento de indice da matrix deve ser do tipo int");
+				}
+				
+				std::string tdr;
+				std::string c1, colum;
+				CustomType &type = customTypes[$1.tipo->id];
+				Tipo *tipo = getTipo(&type, DATA_MEMBER);
+				
+				$$.traducao = $3.traducao;
+				
+				$$.tipo = &tipo_int;
+				$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
+				
+				if (tipo == NULL) {
+					yyerror($1.label + " nao e uma matriz");
+				}
+				
+				$$.label = generateVarLabel();
+				$$.tipo = tipo;
+				declararLocal(&tipo_ptr, $$.label);
+				
+				colum = generateVarLabel();
+				declararLocal(&tipo_int, colum);
+				
+				$$.traducao += newLine(colum + " = 0");
+				
+				$$.traducao += setIndexAccess(&type, $1.label, $3.label, colum, $$.label);
+			}
 
 			| TK_INT
 			{
@@ -556,6 +596,33 @@ DECLARACAO 	: TIPO TK_ID
 				
 				$$.traducao += tdr;
 				
+			}
+			| TIPO TK_TIPO_VECTOR TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+			{
+				cout << "Regra DECLARACAO : TIPO TK_TIPO_MATRIX TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+				if (!belongsTo($5.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $5.tipo) != &tipo_int) {
+					yyerror("Argumento de dimensao do vetor deve ser do tipo int");
+				}
+				
+				std::string tdr;
+				std::string c1, colum;
+				
+				$$.traducao = $5.traducao;
+				
+				$$.tipo = &tipo_int;
+				$$.traducao += implicitCast(&$$, &$5, &$$.label, &c1);
+				
+				colum = generateVarLabel();
+				declararLocal(&tipo_int, colum);
+				
+				$$.traducao += newLine(colum + " = 1");
+				
+				tdr = newMatrix($1.tipo, $3.label, c1, colum);
+				if (tdr == VAR_ALREADY_DECLARED) {
+					yyerror($3.label + " ja declarada anteriormente");
+				}
+				
+				$$.traducao += tdr;
 			}
 			
 			| TK_ID TK_ID

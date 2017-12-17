@@ -33,6 +33,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "bool"		{return TK_TIPO_BOOL;}
 "char"		{return TK_TIPO_CHAR;}
 "matrix"	{return TK_TIPO_MATRIX;}
+"vector"	{return TK_TIPO_VECTOR;}
 "list"		{return TK_TIPO_LIST;}
 
 "type"		{return TK_STRUCT;}
