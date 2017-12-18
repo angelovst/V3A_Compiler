@@ -54,6 +54,11 @@
 					<keyword>xor</keyword>
 					<keyword>xnor</keyword>
 					<keyword>push</keyword>
+					<keyword>pop</keyword>
+					<keyword>front</keyword>
+					<keyword>back</keyword>
+					<keyword>after</keyword>
+					<keyword>before</keyword>
 					<keyword>inbounds</keyword>
 				</context>
 				

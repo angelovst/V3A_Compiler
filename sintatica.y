@@ -31,7 +31,7 @@ CustomType constructingType;
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
-%token TK_PUSH TK_IT_INBOUNDS TK_AFTER TK_BEFORE
+%token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -154,31 +154,56 @@ COMANDO 	: E
 			{
 				//cout << "Regra COMANDO : TK_ENDL" << endl;	//debug
 			}
-			| TK_ID TK_PUSH E
+			| TK_ID TK_PUSH TK_BACK E
 			{
-				cout << "Regra COMANDO : TK_ID TK_PUSH E" << endl;	//debug
+				cout << "Regra COMANDO : TK_ID TK_PUSH TK_BACK E" << endl;	//debug
 				if (customTypesIds.count($1.label) == 0) {
 					yyerror($1.label + " nao declarado ou nao e uma lista");
 				}
 				CustomType *t = &customTypes[customTypesIds[$1.label]];
-				Tipo np;
 				Tipo *dataT;
 				std::string data;
-				np = nonPtr(getTipo(t, TYPE_MEMBER));
-				dataT = &np;
-				if (dataT == NULL) {
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
 					yyerror($1.label + " nao e uma lista");
 				}
 				
-				if ((getGroup($3.tipo)&getGroup(dataT)) != getGroup($3.tipo) || resolverTipo(dataT, $3.tipo) != dataT) {
-					yyerror("Nao foi possivel converter " + $3.tipo->trad + " para " + dataT->trad);
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				if ((getGroup($4.tipo)&getGroup(dataT)) != getGroup($4.tipo) || resolverTipo(dataT, $4.tipo) != dataT) {
+					yyerror("Nao foi possivel converter " + $4.tipo->trad + " para " + dataT->trad);
 				}
 				
 				$$.tipo = dataT;
-				$$.traducao = $3.traducao + implicitCast(&$$, &$3, &$$.label, &data);
+				$$.traducao = $4.traducao + implicitCast(&$$, &$4, &$$.label, &data);
 				$$.traducao += push_back(t, $1.label, data);
 			}
-			| TK_ID TK_PUSH E TK_AFTER TK_ID
+			| TK_ID TK_PUSH TK_FRONT E
+			{
+				cout << "Regra COMANDO : TK_ID TK_PUSH TK_FRONT E" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao declarado ou nao e uma lista");
+				}
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				Tipo *dataT;
+				std::string data;
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				if ((getGroup($4.tipo)&getGroup(dataT)) != getGroup($4.tipo) || resolverTipo(dataT, $4.tipo) != dataT) {
+					yyerror("Nao foi possivel converter " + $4.tipo->trad + " para " + dataT->trad);
+				}
+				
+				$$.tipo = dataT;
+				$$.traducao = $4.traducao + implicitCast(&$$, &$4, &$$.label, &data);
+				$$.traducao += push_front(t, $1.label, data);
+			}
+			
+			| TK_ID TK_PUSH E TK_AFTER E
 			{
 				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_AFTER TK_ID" << endl;	//debug
 				if (customTypesIds.count($1.label) == 0) {
@@ -186,14 +211,14 @@ COMANDO 	: E
 				}
 				CustomType *t = &customTypes[customTypesIds[$1.label]];
 				CustomType *iteratorT;
-				Tipo np;
 				Tipo *dataT, *iterator;
 				std::string data;
-				np = nonPtr(getTipo(t, TYPE_MEMBER));
-				dataT = &np;
-				if (dataT == NULL) {
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
 					yyerror($1.label + " nao e uma lista");
 				}
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+
 				iterator = findVar($5.label);
 				if (iterator == NULL) {
 					yyerror($5.label + " nao declarado anteriormente");
@@ -212,12 +237,45 @@ COMANDO 	: E
 				
 				$$.tipo = dataT;
 				//cout << hex << dataT->id << " " << $3.tipo->id << endl;	//debug
-				$$.traducao = $3.traducao + implicitCast(&$$, &$3, &$$.label, &data);
+				$$.traducao = $3.traducao + $5.traducao + implicitCast(&$$, &$3, &$$.label, &data);
 				$$.traducao += iterator_pushAfter(t, $1.label, iteratorT, $5.label, data);
 			}
-			| TK_ID TK_PUSH E TK_BEFORE TK_ID
+			| TK_ID TK_PUSH E TK_BEFORE E
 			{
-			
+				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_AFTER TK_ID" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao declarado ou nao e uma lista");
+				}
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				CustomType *iteratorT;
+				Tipo *dataT, *iterator;
+				std::string data;
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				iterator = findVar($5.label);
+				if (iterator == NULL) {
+					yyerror($5.label + " nao declarado anteriormente");
+				}
+				if (customTypes.count(iterator->id) == 0) {
+					yyerror($5.label + " nao e um iterador");
+				}
+				iteratorT = &customTypes[iterator->id];
+				if (getTipo(iteratorT, NEXT_MEMBER) == NULL) {
+					yyerror($5.label + " nao e um iterador");
+				}
+				
+				if ((getGroup($3.tipo)&getGroup(dataT)) != getGroup($3.tipo) || resolverTipo(dataT, $3.tipo) != dataT) {
+					yyerror("Nao foi possivel converter " + $3.tipo->trad + " para " + dataT->trad);
+				}
+				
+				$$.tipo = dataT;
+				//cout << hex << dataT->id << " " << $3.tipo->id << endl;	//debug
+				$$.traducao = $3.traducao + $5.traducao + implicitCast(&$$, &$3, &$$.label, &data);
+				$$.traducao += iterator_pushBefore(t, $1.label, iteratorT, $5.label, data);		
 			}
 			;			
 
@@ -226,6 +284,7 @@ E 			: E TK_ATRIB E {
 				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
 				string retorno;
 				$$.traducao = "";
+					
 				retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
@@ -465,6 +524,9 @@ E 			: E TK_ATRIB E {
 				
 				CustomType *type = &customTypes[$1.tipo->id];
 				Tipo *tipo = getTipo(type, $3.label);
+				if (tipo == NULL) {
+					yyerror($1.label + " nao possui membro " + $3.label);
+				}
 				Tipo accessT;
 				std::string ptr, check;
 				
@@ -498,11 +560,8 @@ E 			: E TK_ATRIB E {
 				
 				//cout << hex << tipo->id << endl;	//debug
 				
-				if (tipo == NULL) {
-					yyerror($3.label + " nao pertence ao struct");
-				}
-				
 			}
+			
 			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
 			{
 				cout << "Regra E : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
@@ -580,6 +639,86 @@ E 			: E TK_ATRIB E {
 				
 				$$.traducao += setIndexAccess(&type, $1.label, $3.label, colum, $$.label);
 			}
+			| TK_ID TK_POP TK_BACK
+			{
+				cout << "Regra E : TK_ID TK_POP TK_BACK" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao declarado ou nao e uma lista");
+				}
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				Tipo *dataT;
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				$$.tipo = dataT;
+				$$.label = generateVarLabel();
+				declararLocal($$.tipo, $$.label);
+				//cout << hex << dataT->id << " " << $3.tipo->id << endl;	//debug
+				$$.traducao = pop_back(t, $1.label, $$.label);
+			}
+			| TK_ID TK_POP TK_FRONT
+			{
+				cout << "Regra E : TK_ID TK_POP TK_FRONT" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao declarado ou nao e uma lista");
+				}
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				Tipo *dataT;
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				$$.tipo = dataT;
+				$$.label = generateVarLabel();
+				declararLocal($$.tipo, $$.label);
+				//cout << hex << dataT->id << " " << $3.tipo->id << endl;	//debug
+				$$.traducao = pop_front(t, $1.label, $$.label);
+			}
+			
+			| TK_ID TK_POP E
+			{
+				cout << "Regra E : TK_ID TK_POP E" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao declarado ou nao e uma lista");
+				}
+				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				CustomType *iteratorT;
+				Tipo *dataT, *iterator;
+				
+				if (getTipo(t, TYPE_MEMBER) == NULL) {
+					yyerror($1.label + " nao e uma lista");
+				}
+				dataT = nonPtr(getTipo(t, TYPE_MEMBER));
+				
+				iterator = findVar($3.label);
+				if (iterator == NULL) {
+					yyerror($3.label + " nao declarado anteriormente");
+				}
+				if (customTypes.count(iterator->id) == 0) {
+					yyerror($3.label + " nao e um iterador");
+				}
+				iteratorT = &customTypes[iterator->id];
+				if (getTipo(iteratorT, NEXT_MEMBER) == NULL) {
+					yyerror($3.label + " nao e um iterador");
+				}
+				
+				$$.tipo = dataT;
+				//cout << $$.tipo->trad << endl;	//debug
+				cout << hex << $$.tipo->id << endl;	//debug
+				$$.label = generateVarLabel();
+				declararLocal($$.tipo, $$.label);
+				
+				//cout << hex << dataT->id << " " << $3.tipo->id << endl;	//debug
+				$$.traducao = $3.traducao;
+				$$.traducao += iterator_remove(t, $1.label, iteratorT, $3.label, $$.label);
+			}
+			
 			| TK_ID TK_IT_INBOUNDS
 			{
 				Tipo *t = findVar($1.label);
@@ -1258,8 +1397,8 @@ PRINT_ALT	: E	TK_ENDL
 					$$.label = " << " + $1.label + " << std::endl";
 				} else {
 					std::string var;
-					Tipo t = nonPtr($1.tipo);
-					$$.tipo = &t;
+					Tipo *t = nonPtr($1.tipo);
+					$$.tipo = t;
 					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
 					$$.label = " << " + var + " << std::endl";
 				}
@@ -1276,8 +1415,8 @@ PRINT_ALT	: E	TK_ENDL
 					$$.label = " << " + $1.label + " << \" \" " + $3.label;
 				} else {
 					std::string var;
-					Tipo t = nonPtr($1.tipo);
-					$$.tipo = &t;
+					Tipo *t = nonPtr($1.tipo);
+					$$.tipo = t;
 					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
 					$$.label = " << " + var + " << \" \" " + $3.label;
 				}

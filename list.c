@@ -1,5 +1,6 @@
 #include "list.h"
 #include "helper.h"
+#include <iostream>
 
 CustomType* nodeType (Tipo *tipo) {
 	Tipo t = *tipo;
@@ -106,6 +107,117 @@ std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, 
 	return traducao + "\n";
 }
 
+std::string iterator_pushBefore (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &data) {
+	std::string traducao;
+	std::string n, iteratorPrev, check;
+	std::string ifLabel, elseLabel;
+	Tipo *t = getTipo(node, NODE_DATA_MEMBER);
+	Tipo *ptr = getTipo(node, NEXT_MEMBER);
+	
+	n = generateVarLabel();
+	iteratorPrev = generateVarLabel();
+	check = generateVarLabel();
+	
+	ifLabel = generateLabel();
+	elseLabel = generateLabel();
+	
+	traducao = iterator_inbounds(iterator, check);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+	traducao += "\t" + newLine("std::cout << \"Erro: tentativa de push antes de iterador out of bounds\" << std::endl");
+	traducao += "\t" + newLine("return 1");
+	
+	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false);
+	declararLocal(&tipo_ptr, iteratorPrev);
+	declararLocal(&tipo_bool, check);
+	
+	ifLabel = generateLabel();
+	
+	//add data to n
+	traducao += attrTo(node, n, NODE_DATA_MEMBER, data);
+	
+	//iteratorPrev = iterator.previous
+	traducao += retrieveFrom(node, iterator, PREVIOUS_MEMBER, iteratorPrev);
+	
+	//n.previous = iteratorPrev
+	traducao += attrTo(node, n, PREVIOUS_MEMBER, iteratorPrev);
+	//n.next = iterator
+	traducao += attrTo(node, n, NEXT_MEMBER, iterator);
+	
+	//if (iteratorPrev != NULL) iterator.prev.next = n
+	traducao += iterator_end (iteratorPrev, check);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+	traducao += attrTo(node, iteratorPrev, NEXT_MEMBER, n);
+	traducao += newLine("goto "+elseLabel);
+	
+	//else list.first = n
+	traducao += ident() + ifLabel + ":\n";
+	traducao += attrTo(list, listLabel, FIRST_MEMBER, n);
+	//endif
+	traducao += ident() + elseLabel + ":\n\n";
+	
+	//iterator.previous = n
+	traducao += attrTo(node, iterator, PREVIOUS_MEMBER, n);
+	
+	return traducao + "\n";
+}
+
+std::string iterator_remove (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &removed) {
+	std::string traducao = "";
+	std::string prev, next, check;
+	std::string ifLabel, elseLabel, ifL2, elseL2;
+	
+	prev = generateVarLabel();
+	next = generateVarLabel();
+	check = generateVarLabel();
+	declararLocal(&tipo_ptr, prev);
+	declararLocal(&tipo_ptr, next);
+	declararLocal(&tipo_bool, check);
+	
+	//removed = iterator.content
+	traducao += retrieveFrom(node, iterator, NODE_DATA_MEMBER, removed);
+	
+	//next = iterator.next; prev = iterator.previous
+	traducao += retrieveFrom(node, iterator, NEXT_MEMBER, next);
+	traducao += retrieveFrom(node, iterator, PREVIOUS_MEMBER, prev);
+	//if (next == prev)
+	ifLabel = generateLabel();
+	elseLabel = generateLabel();
+	traducao += newLine(check+" = "+next+"!="+prev);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+		//list.first = null; list.last = null
+	traducao += "\t" + attrTo(list, listLabel, FIRST_MEMBER, NULL_VAR);
+	traducao += "\t" + attrTo(list, listLabel, LAST_MEMBER, NULL_VAR);
+	traducao += newLine("goto "+elseLabel);
+	//else
+	traducao += ident() + ifLabel + ":\n";
+		//if (next == NULL) list.last = prev
+	ifL2 = generateLabel();
+	elseL2 = generateLabel();
+	traducao += newLine(check+" = "+next+"!=NULL");
+	traducao += newLine("if ("+check+") goto "+ifL2);
+	traducao += "\t"+ attrTo(list, listLabel, LAST_MEMBER, prev);
+	traducao += newLine("goto "+elseL2);
+		//else next.previous = prev
+	traducao += ident() + ifL2 + ":\n";
+	traducao += attrTo(node, next, PREVIOUS_MEMBER, prev);
+	traducao += newLine(elseL2+":");
+		//if (prev == NULL) list.first = next
+	ifL2 = generateLabel();
+	elseL2 = generateLabel();
+	traducao += newLine(check+" = "+prev+"!=NULL");
+	traducao += newLine("if ("+check+") goto "+ifL2);
+	traducao += "\t"+ attrTo(list, listLabel, FIRST_MEMBER, next);
+	traducao += newLine("goto "+elseL2);
+		//else previous.next = next
+	traducao += ident() + ifL2 + ":\n";
+	traducao += attrTo(node, prev, NEXT_MEMBER, next);
+	traducao += newLine(elseL2+":");
+	
+	traducao += newLine(elseLabel+":");
+	
+	return traducao;
+}
+
 std::string push_back (CustomType *list, const std::string &label, const std::string &data) {
 	std::string traducao;
 	std::string last, n;
@@ -143,6 +255,99 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	traducao += attrTo(list, label, LAST_MEMBER, n);
 	
 	traducao += newLine(elseLabel+":")+"\n";
+	
+	return traducao;
+}
+
+std::string push_front (CustomType *list, const std::string &label, const std::string &data) {
+	std::string traducao;
+	std::string first, n;
+	std::string check, ifLabel, elseLabel;
+	Tipo *t = getTipo(list, TYPE_MEMBER);
+	
+	first = generateVarLabel();
+	check = generateVarLabel();
+	n = generateVarLabel();
+	
+	declararLocal(&tipo_ptr, first);
+	declararLocal(&tipo_bool, check);
+	
+	ifLabel = generateLabel();
+	elseLabel = generateLabel();
+	
+	//first = list.first()
+	traducao = retrieveFrom(list, label, FIRST_MEMBER, first);
+	
+	//if (!first.end()) first.push_before(data)
+	traducao += iterator_end(first, check);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+	traducao += iterator_pushBefore(list, label, nodeType(t), first, data);
+	traducao += newLine("goto "+elseLabel);
+	
+	//else list.first = list.last = newNode(data)
+	traducao += ident() + ifLabel + ":\n";
+		//newNode
+	traducao += ident() + "//new node\n";
+	traducao += newInstanceOf(nodeType(t), n, false);
+	traducao += attrTo(nodeType(t), n, NODE_DATA_MEMBER, data);
+		//list.first = newNode
+	traducao += attrTo(list, label, FIRST_MEMBER, n);
+		//list.last = newNode
+	traducao += attrTo(list, label, LAST_MEMBER, n);
+	
+	traducao += newLine(elseLabel+":")+"\n";
+	
+	return traducao;
+}
+
+std::string pop_back (CustomType *list, const std::string &label, const std::string &removed) {
+	std::string traducao;
+	std::string last, n;
+	std::string check, ifLabel;
+	Tipo *t = getTipo(list, TYPE_MEMBER);
+	
+	last = generateVarLabel();
+	check = generateVarLabel();
+	
+	declararLocal(&tipo_ptr, last);
+	declararLocal(&tipo_bool, check);
+	
+	ifLabel = generateLabel();
+	
+	//last = list.last()
+	traducao = retrieveFrom(list, label, LAST_MEMBER, last);
+	
+	//if (!last.end()) remove(last)
+	traducao += iterator_end(last, check);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+	traducao += iterator_remove(list, label, nodeType(t), last, removed);
+	traducao += newLine(ifLabel + ":");
+	
+	return traducao;
+}
+
+std::string pop_front (CustomType *list, const std::string &label, const std::string &removed) {
+	std::string traducao;
+	std::string first;
+	std::string check, ifLabel;
+	Tipo *t = getTipo(list, TYPE_MEMBER);
+	
+	first = generateVarLabel();
+	check = generateVarLabel();
+	
+	declararLocal(&tipo_ptr, first);
+	declararLocal(&tipo_bool, check);
+	
+	ifLabel = generateLabel();
+	
+	//first = list.first()
+	traducao = retrieveFrom(list, label, FIRST_MEMBER, first);
+	
+	//if (!last.end()) remove(first)
+	traducao += iterator_end(first, check);
+	traducao += newLine("if ("+check+") goto "+ifLabel);
+	traducao += iterator_remove(list, label, nodeType(t), first, removed);
+	traducao += newLine(ifLabel + ":");
 	
 	return traducao;
 }

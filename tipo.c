@@ -15,6 +15,7 @@ Tipo tipo_atrib_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traduca
 
 //mapa de tipos de ponteiros
 std::map<Tipo*, Tipo> tipo_ptrs;
+std::map<unsigned int, Tipo> tipos;
 
 //Pilha de variaveis
 std::list<Context> contextStack;
@@ -66,10 +67,14 @@ Tipo* newPtr (Tipo *pointsTo) {
 	return &tipo_ptrs[pointsTo];
 }
 
-Tipo nonPtr (Tipo *ptr) {
+Tipo* nonPtr (Tipo *ptr) {
 	Tipo t = *ptr;
 	t.id = t.id & ~GROUP_PTR;
-	return t;
+	if (tipos.count(t.id) == 0) {
+		tipos[t.id] = t;
+	}
+
+	return &tipos[t.id];
 }
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
@@ -150,6 +155,7 @@ string traducaoAtribuicao (void *args) {
 		lvalue->tipo = rvalue->tipo;
 	}
 	
+	//cout << hex << rvalue->tipo->id << endl;	//debug
 	//if (!belongsTo(lvalue->tipo, GROUP_PTR)) cout << "is not ptr" << endl;	//debug
 	
 	if (!belongsTo(lvalue->tipo, GROUP_PTR)) {
@@ -160,20 +166,21 @@ string traducaoAtribuicao (void *args) {
 			return INVALID_CAST;
 		}
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
-		traducao = cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
+		traducao += cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	} else {
 		string rvalueAddr, lvalueAddr;
 		if (!belongsTo(lvalue->tipo, GROUP_STRUCT)) {
 			if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
 				rvalueAddr = generateVarLabel();
 				declararLocal(&tipo_ptr, rvalueAddr);
-				traducao = newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
+				traducao += newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
 			} else {
+				/*
 				if (rvalue->tipo->size == 0) {
 					return VOID_POINTER;
 				}
+				*/
 				rvalueAddr = rvalue->label;
-				traducao = "";
 			}
 			traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
 		} else {

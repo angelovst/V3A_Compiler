@@ -81,7 +81,7 @@ Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno
 
 Tipo* newPtr (Tipo *pointsTo);
 
-Tipo nonPtr (Tipo *ptr);
+Tipo* nonPtr (Tipo *ptr);
 
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
 
@@ -113,6 +113,7 @@ extern Tipo tipo_atrib_operator;
 
 //mapa de tipos de ponteiros
 extern std::map<Tipo*, Tipo> tipo_ptrs;
+extern std::map<unsigned int, Tipo> tipos;
 
 //Pilha de variaveis
 extern std::list<Context> contextStack;

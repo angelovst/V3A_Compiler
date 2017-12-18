@@ -85,6 +85,9 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "]" { return TK_CLOSE_MEMBER; }
 
 "push"		{ return TK_PUSH; }
+"pop"		{ return TK_POP; }
+"front"		{ return TK_FRONT; }
+"back"		{ return TK_BACK; }
 "inbounds"	{ return TK_IT_INBOUNDS; }
 "after"		{ return TK_AFTER; }
 "before"	{ return TK_BEFORE; }
