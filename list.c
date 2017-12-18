@@ -116,6 +116,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	std::string last, ldata, dataAddr, n;
 	std::string check, ifLabel, elseLabel;
 	std::string nullVar;
+	std::string iterator;
 	Tipo *t = getTipo(list, TYPE_MEMBER);
 	Tipo *ptr = newPtr(t);
 	
@@ -125,12 +126,14 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	check = generateVarLabel();
 	n = generateVarLabel();
 	nullVar = generateVarLabel();
+	iterator = generateVarLabel();
 	
 	declararLocal(&tipo_ptr, last);
 	declararLocal(&tipo_ptr, ldata);
 	declararLocal(&tipo_ptr, dataAddr);
 	declararLocal(&tipo_bool, check);
 	declararLocal(&tipo_ptr, nullVar);
+	declararLocal(&tipo_ptr, iterator);
 	
 	ifLabel = generateLabel();
 	elseLabel = generateLabel();
@@ -139,8 +142,10 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	traducao = setAccess(list, label, LAST_MEMBER, last);
 	
 	//if (!last.end()) last.push_after(data)
+	traducao += newLine(ldata+" = ("+TIPO_PTR_TRAD+")&"+iterator);
+	traducao += newLine("memcpy("+ldata+", "+last+", "+std::to_string(tipo_ptr.size)+")");
 	traducao += newLine(nullVar+" = NULL");
-	traducao += iterator_end(last, check);
+	traducao += iterator_end(iterator, check);
 	traducao += newLine("if ("+check+") goto "+ifLabel);
 	traducao += iterator_pushAfter(list, label, nodeType(t, nullVar), last, data);
 	traducao += newLine("goto "+elseLabel);
@@ -148,8 +153,9 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	//else list.first = list.last = newNode(data)
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
+	traducao += ident() + "//new node\n";
 	traducao += newInstanceOf(nodeType(t, nullVar), n, false);
-	traducao += setAccess(nodeType(t, nullVar), last, NODE_DATA_MEMBER, ldata);
+	traducao += setAccess(nodeType(t, nullVar), n, NODE_DATA_MEMBER, ldata);
 	traducao += newLine(dataAddr+" = ("+TIPO_PTR_TRAD+")&"+data);
 	traducao += newLine("memcpy("+ldata+", "+dataAddr+", "+std::to_string(t->size)+")");
 		//list.first = newNode

@@ -138,7 +138,7 @@ string traducaoAtribuicao (void *args) {
 	atributos *lvalue = atribs[0];
 	atributos *rvalue = atribs[1];
 	string *retorno = *((string**)((atributos**)args+2));
-	string traducao;
+	string traducao = "";
 	
 	if (lvalue->tipo == NULL) lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
@@ -163,19 +163,36 @@ string traducaoAtribuicao (void *args) {
 		traducao = cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	} else {
 		string rvalueAddr, lvalueAddr;
-		if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
-			rvalueAddr = generateVarLabel();
-			declararLocal(&tipo_ptr, rvalueAddr);
-			traducao = newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
-		} else {
-			if (rvalue->tipo->size == 0) {
-				return VOID_POINTER;
+		if (!belongsTo(lvalue->tipo, GROUP_STRUCT)) {
+			if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
+				rvalueAddr = generateVarLabel();
+				declararLocal(&tipo_ptr, rvalueAddr);
+				traducao = newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
+			} else {
+				if (rvalue->tipo->size == 0) {
+					return VOID_POINTER;
+				}
+				rvalueAddr = rvalue->label;
+				traducao = "";
 			}
-			rvalueAddr = rvalue->label;
-			traducao = "";
+			traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
+		} else {
+			if (!belongsTo(rvalue->tipo, GROUP_STRUCT)) {
+				return INVALID_CAST;
+			}
+			
+			if (belongsTo(rvalue->tipo, GROUP_PTR)) {
+				lvalueAddr = generateVarLabel();
+				declararLocal(&tipo_ptr, lvalueAddr);
+			
+				traducao += newLine(lvalueAddr+" = ("+TIPO_PTR_TRAD+")&"+lvalue->label);
+				traducao += newLine("memcpy("+lvalueAddr+", "+rvalue->label+", "+to_string(tipo_ptr.size)+")");
+			} else {
+				traducao += newLine(lvalue->label+" = "+rvalue->label);
+			}	
 		}
 		
-		traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
+		
 	}	
 
 	return traducao;
