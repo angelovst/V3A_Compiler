@@ -7,8 +7,7 @@ Tipo tipo_float = { TIPO_FLOAT_ID, sizeof(float), TIPO_FLOAT_TRAD, &castPadrao, 
 Tipo tipo_int = { TIPO_INT_ID, sizeof(int), TIPO_INT_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_bool = { TIPO_BOOL_ID, sizeof(unsigned char), TIPO_BOOL_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_char = { TIPO_CHAR_ID, sizeof(char), TIPO_CHAR_TRAD, &castPadrao, NULL, NULL, NULL };
-Tipo tipo_list = { TIPO_LIST_ID, sizeof(size_t)+2*sizeof(void*), TIPO_LIST_TRAD, NULL, NULL, NULL, NULL };
-Tipo tipo_ptr = { GROUP_PTR, 0, TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
+Tipo tipo_ptr = { GROUP_PTR, sizeof(char*), TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
 
 Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, NULL, NULL };
 Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
@@ -16,6 +15,7 @@ Tipo tipo_atrib_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traduca
 
 //mapa de tipos de ponteiros
 std::map<Tipo*, Tipo> tipo_ptrs;
+std::map<unsigned int, Tipo> tipos;
 
 //Pilha de variaveis
 std::list<Context> contextStack;
@@ -67,10 +67,14 @@ Tipo* newPtr (Tipo *pointsTo) {
 	return &tipo_ptrs[pointsTo];
 }
 
-Tipo nonPtr (Tipo *ptr) {
+Tipo* nonPtr (Tipo *ptr) {
 	Tipo t = *ptr;
 	t.id = t.id & ~GROUP_PTR;
-	return t;
+	if (tipos.count(t.id) == 0) {
+		tipos[t.id] = t;
+	}
+
+	return &tipos[t.id];
 }
 
 string implicitCast (atributos *var1, atributos *var2, string *label1, string *label2) {
@@ -139,7 +143,7 @@ string traducaoAtribuicao (void *args) {
 	atributos *lvalue = atribs[0];
 	atributos *rvalue = atribs[1];
 	string *retorno = *((string**)((atributos**)args+2));
-	string traducao;
+	string traducao = "";
 	
 	if (lvalue->tipo == NULL) lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
@@ -151,35 +155,82 @@ string traducaoAtribuicao (void *args) {
 		lvalue->tipo = rvalue->tipo;
 	}
 	
+	//cout << hex << rvalue->tipo->id << endl;	//debug
 	//if (!belongsTo(lvalue->tipo, GROUP_PTR)) cout << "is not ptr" << endl;	//debug
 	
 	if (!belongsTo(lvalue->tipo, GROUP_PTR)) {
 		int rightGroup = getGroup(rvalue->tipo)&getGroup(lvalue->tipo);
 		string cast;
 		string rlabel, llabel;
-		if (rightGroup == 0 || rightGroup != 0 && rvalue->tipo->id > lvalue->tipo->id) {
+		if (rightGroup = 0 || rightGroup != 0 && rvalue->tipo->id > lvalue->tipo->id) {
 			return INVALID_CAST;
 		}
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
-		traducao = cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
+		traducao += cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	} else {
-		string rvalueAddr;
-		if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
-			rvalueAddr = generateVarLabel();
-			declararLocal(&tipo_ptr, rvalueAddr);
-			traducao = newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
-		} else {
-			if (rvalue->tipo->size == 0) {
-				return VOID_POINTER;
+		string rvalueAddr, lvalueAddr;
+		if (!belongsTo(lvalue->tipo, GROUP_STRUCT)) {
+			if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
+				rvalueAddr = generateVarLabel();
+				declararLocal(&tipo_ptr, rvalueAddr);
+				traducao += newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
+			} else {
+				/*
+				if (rvalue->tipo->size == 0) {
+					return VOID_POINTER;
+				}
+				*/
+				rvalueAddr = rvalue->label;
 			}
-			rvalueAddr = rvalue->label;
-			traducao = "";
+			traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
+		} else {
+			if (!belongsTo(rvalue->tipo, GROUP_STRUCT) || rvalue->tipo->id != lvalue->tipo->id) {
+				return INVALID_CAST;
+			}
+			
+			if (belongsTo(rvalue->tipo, GROUP_PTR) && !belongsTo(rvalue->tipo, GROUP_STRUCT)) {
+				lvalueAddr = generateVarLabel();
+				declararLocal(&tipo_ptr, lvalueAddr);
+			
+				traducao += newLine(lvalueAddr+" = ("+TIPO_PTR_TRAD+")&"+lvalue->label);
+				traducao += newLine("memcpy("+lvalueAddr+", "+rvalue->label+", "+to_string(tipo_ptr.size)+")");
+			} else {
+				traducao += newLine(lvalue->label+" = "+rvalue->label);
+			}	
 		}
 		
-		traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
+		
 	}	
 
 	return traducao;
+}
+
+string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno) {
+	//cout << "Funcao traducaoOperadores : " << atr1.label << " " << atr2.label << " " << atr3.label << endl;	//debug
+	void *args[4];
+	string traducao, trdParcial;
+	
+	atrRetorno->label = generateVarLabel();	//retorno
+	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
+		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
+	} else {
+		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
+	}
+	declararLocal(atrRetorno->tipo, atrRetorno->label);
+	traducao = atr1.traducao + atr3.traducao;
+	
+	args[0] = &atr1;
+	args[1] = &atr3;
+	args[2] = &atrRetorno->label;
+	args[3] = &atr2.label;
+	
+	trdParcial = atr2.tipo->traducaoParcial((void*)args);
+
+	if (trdParcial == INVALID_CAST || trdParcial == VAR_ALREADY_DECLARED || trdParcial == VAR_UNDECLARED) {
+		return trdParcial;
+	}
+
+	return traducao + trdParcial;	
 }
 
 //CONTEXTO
@@ -222,30 +273,4 @@ bool declararLocal (Tipo *tipo, const std::string &label) {
 	top->vars[label] = tipo;
 	//cout << "declaracao " << tipo->trad << " " << label << endl;	//debug
 	return true;
-}
-
-string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno) {
-	//cout << "Funcao traducaoOperadores : " << atr1.label << " " << atr2.label << " " << atr3.label << endl;	//debug
-	void *args[4];
-	string traducao;
-	
-	atrRetorno->label = generateVarLabel();	//retorno
-	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
-		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
-	} else {
-		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
-	}
-	declararLocal(atrRetorno->tipo, atrRetorno->label);
-	atrRetorno->traducao = atr1.traducao + atr3.traducao;
-	
-	args[0] = &atr1;
-	args[1] = &atr3;
-	args[2] = &atrRetorno->label;
-	args[3] = &atr2.label;
-	
-	traducao = atr2.tipo->traducaoParcial((void*)args);
-	
-	atrRetorno->traducao += traducao;
-
-	return traducao;	
 }

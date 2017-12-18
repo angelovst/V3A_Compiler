@@ -15,7 +15,7 @@ CustomType newCustomType (void) {
 	return c;
 }
 
-bool createCustomType (CustomType *type, std::string &label) {
+bool createCustomType (CustomType *type, const std::string &label) {
 	if (customTypesIds.count(label) != 0) {
 		return false;
 	}
@@ -51,6 +51,42 @@ std::string setAccess (CustomType *type, const std::string &instance, const std:
 	Tipo *t = getTipo(type, member);
 	
 	traducao = newLine(accessVar + " = " + instance + "+" + std::to_string(offset));	//armazenar local de memoria onde membro se encontra
+	
+	return traducao;
+}
+
+std::string attrTo (CustomType *type, const std::string &instance, const std::string &member, const std::string &value) {
+	std::string accessVar;
+	std::string valueAddr;
+	std::string traducao;
+	Tipo *t = getTipo(type, member);
+	
+	accessVar = generateVarLabel();
+	valueAddr = generateVarLabel();
+	declararLocal(&tipo_ptr, accessVar);
+	declararLocal(&tipo_ptr, valueAddr);
+	
+	traducao = newLine(valueAddr+" = ("+TIPO_PTR_TRAD+")&"+value);
+	traducao += setAccess(type, instance, member, accessVar);
+	traducao += newLine("memcpy("+accessVar+", "+valueAddr+", "+std::to_string(t->size)+")");
+	
+	return traducao;
+}
+
+std::string retrieveFrom (CustomType *type, const std::string &instance, const std::string &member, const std::string &dst) {
+	std::string accessVar;
+	std::string valueAddr;
+	std::string traducao;
+	Tipo *t = getTipo(type, member);
+	
+	accessVar = generateVarLabel();
+	valueAddr = generateVarLabel();
+	declararLocal(&tipo_ptr, accessVar);
+	declararLocal(&tipo_ptr, valueAddr);
+	
+	traducao = newLine(valueAddr+" = ("+TIPO_PTR_TRAD+")&"+dst);
+	traducao += setAccess(type, instance, member, accessVar);
+	traducao += newLine("memcpy("+valueAddr+", "+accessVar+", "+std::to_string(t->size)+")");
 	
 	return traducao;
 }

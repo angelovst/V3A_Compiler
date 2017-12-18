@@ -21,7 +21,6 @@
 #define GROUP_NUMBER		0x40000000
 #define GROUP_BOOL			0x02000000
 #define GROUP_CHAR			0x04000000
-#define GROUP_CONTAINER 	0x08000000
 #define GROUP_FUNCTION		0x10000000
 #define GROUP_STRUCT		0x20000000
 
@@ -34,7 +33,7 @@
 
 #define TIPO_CHAR_ID	GROUP_CHAR|0x01
 
-#define TIPO_LIST_ID	GROUP_CONTAINER|0x01
+//#define TIPO_LIST_ID	GROUP_CONTAINER|0x01
 
 #define TIPO_INF_OP_ID	GROUP_FUNCTION|0x01
 
@@ -82,7 +81,7 @@ Tipo* resolverTipo (Tipo *a, Tipo *b);	//decide implicitamente o tipo do retorno
 
 Tipo* newPtr (Tipo *pointsTo);
 
-Tipo nonPtr (Tipo *ptr);
+Tipo* nonPtr (Tipo *ptr);
 
 std::string implicitCast (atributos *var1, atributos *var2, std::string *label1, std::string *label2);	//faz cast implicito dos tipos var1 e var2 e atribui os labels das variaveis em label1 e label2
 
@@ -106,7 +105,6 @@ extern Tipo tipo_float;
 extern Tipo tipo_int;
 extern Tipo tipo_bool;
 extern Tipo tipo_char;
-extern Tipo tipo_list;
 extern Tipo tipo_ptr;
 
 extern Tipo tipo_arithmetic_operator;
@@ -115,6 +113,7 @@ extern Tipo tipo_atrib_operator;
 
 //mapa de tipos de ponteiros
 extern std::map<Tipo*, Tipo> tipo_ptrs;
+extern std::map<unsigned int, Tipo> tipos;
 
 //Pilha de variaveis
 extern std::list<Context> contextStack;

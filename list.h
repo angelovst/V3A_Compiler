@@ -1,51 +1,28 @@
-/*
- * Contem metodos para geracao de codigo intermediario de operacoes com lista
- * A lista e duplamente encadeada
- *		Vitor Andrade, 2017
- */
+#pragma once
 
-#ifndef LIST_H_INCLUDED
-#define LIST_H_INCLUDED
+#define FIRST_MEMBER "first"
+#define LAST_MEMBER "last"
+#define TYPE_MEMBER "tipo"
 
-#define NO_ACCESS_VAR "_memberAccess"
-#define NO_DADO "_dado"
+#define NODE_DATA_MEMBER "content"
+#define NEXT_MEMBER "next"
+#define PREVIOUS_MEMBER "previous"
 
-#include "helper.h"
-#include <string>
+#include "struct.h"
 
-//todos os atributos das structs abaixo sao labels de variaveis
-typedef struct _No {
-	void* dado;
-	struct _No *anterior;
-	struct _No *proximo;
-} No;
+std::string newList (Tipo *tipo, std::string &label);
 
-typedef struct {
-	size_t tamanho;
-	No *primeiro;
-	No *ultimo;
-} Lista;
+std::string iterator_end (const std::string &iterator, const std::string &result);
+std::string iterator_inbounds (const std::string &iterator, const std::string &result);
 
-//NO DA LISTA
-std::string generateNodeLabel (void);
-std::string no_getData (std::string &label);
-std::string no_getMemberAccess (std::string &label);
-std::string no_setAccessDado (std::string &label, std::string &accessVar);
-std::string no_setAccessAnterior (std::string &label);
-std::string no_setAccessProximo (std::string &label);
+std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &data);
+std::string iterator_pushBefore (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &data);
+std::string iterator_remove (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &removed);
 
-void no_novo (std::string &label);
-std::string no_deletar (std::string &label);
-std::string no_atribuir (std::string &label, atributos &dado);	//atribui dado a um no
+std::string push_back (CustomType *list, const std::string &label, const std::string &data);
+std::string push_front (CustomType *list, const std::string &label, const std::string &data);
 
-//construtores
-std::string newList (std::string &label);
-std::string copyChain (std::string &beginLabel, std::string &endLabel);
+std::string pop_back (CustomType *list, const std::string &label, const std::string &removed);
+std::string pop_front (CustomType *list, const std::string &label, const std::string &removed);
 
-std::string add (std::string &lista, std::string &noReferencia, std::string &no);	//adiciona no apos noReferencia
-std::string remove (std::string &labelNo);
-
-std::string empty (std::string &lista);
-
-
-#endif
+std::string delete_list (CustomType *list, const std::string &label);
