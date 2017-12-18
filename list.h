@@ -13,6 +13,7 @@
 std::string newList (Tipo *tipo, std::string &label);
 
 std::string iterator_end (const std::string &iterator, const std::string &result);
+std::string iterator_inbounds (const std::string &iterator, const std::string &result);
 
 std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, CustomType *node, const std::string &iterator, const std::string &data);
 

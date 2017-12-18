@@ -54,6 +54,7 @@
 					<keyword>xor</keyword>
 					<keyword>xnor</keyword>
 					<keyword>push</keyword>
+					<keyword>inbounds</keyword>
 				</context>
 				
 				<context ref="def:decimal"/>

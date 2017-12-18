@@ -156,7 +156,7 @@ string traducaoAtribuicao (void *args) {
 		int rightGroup = getGroup(rvalue->tipo)&getGroup(lvalue->tipo);
 		string cast;
 		string rlabel, llabel;
-		if (rightGroup == 0 || rightGroup != 0 && rvalue->tipo->id > lvalue->tipo->id) {
+		if (rightGroup = 0 || rightGroup != 0 && rvalue->tipo->id > lvalue->tipo->id) {
 			return INVALID_CAST;
 		}
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
@@ -177,7 +177,7 @@ string traducaoAtribuicao (void *args) {
 			}
 			traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
 		} else {
-			if (!belongsTo(rvalue->tipo, GROUP_STRUCT)) {
+			if (!belongsTo(rvalue->tipo, GROUP_STRUCT) || rvalue->tipo->id != lvalue->tipo->id) {
 				return INVALID_CAST;
 			}
 			
@@ -201,7 +201,7 @@ string traducaoAtribuicao (void *args) {
 string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno) {
 	//cout << "Funcao traducaoOperadores : " << atr1.label << " " << atr2.label << " " << atr3.label << endl;	//debug
 	void *args[4];
-	string traducao;
+	string traducao, trdParcial;
 	
 	atrRetorno->label = generateVarLabel();	//retorno
 	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
@@ -217,9 +217,13 @@ string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atrib
 	args[2] = &atrRetorno->label;
 	args[3] = &atr2.label;
 	
-	traducao += atr2.tipo->traducaoParcial((void*)args);
+	trdParcial = atr2.tipo->traducaoParcial((void*)args);
 
-	return traducao;	
+	if (trdParcial == INVALID_CAST || trdParcial == VAR_ALREADY_DECLARED || trdParcial == VAR_UNDECLARED) {
+		return trdParcial;
+	}
+
+	return traducao + trdParcial;	
 }
 
 //CONTEXTO

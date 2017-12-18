@@ -9,6 +9,8 @@
 
 #define UNDEFINED_MEMBER "undefined member"
 
+#define NULL_VAR "_nullvar"
+
 #include "tipo.h"
 #include <list>
 #include <map>
