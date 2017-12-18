@@ -466,6 +466,33 @@ E 			: E TK_ATRIB E {
 				CustomType *type = &customTypes[$1.tipo->id];
 				Tipo *tipo = getTipo(type, $3.label);
 				Tipo accessT;
+				std::string ptr, check;
+				
+				$$.label = generateVarLabel();
+				$$.tipo = tipo;
+				$$.traducao = $1.traducao;
+				
+				accessT = *tipo;
+				accessT.trad = TIPO_PTR_TRAD;
+				declararLocal(&accessT, $$.label);
+				
+				std::string ifLabel = generateLabel();
+				ptr = generateVarLabel();
+				check = generateVarLabel();
+				declararLocal(&tipo_ptr, ptr);
+				declararLocal(&tipo_bool, check);
+				
+				$$.traducao += newLine(check+" = "+$1.label+"!=NULL");
+				$$.traducao += newLine("if ("+check+") goto "+ifLabel);
+				$$.traducao += "\t" + newLine("std::cout << \"Erro: tentativa de acesso de membro de struct nulo\" << std::endl");
+				$$.traducao += "\t" + newLine("return 1");
+				$$.traducao += newLine(ifLabel+":");
+				
+				if (belongsTo($$.tipo, GROUP_STRUCT)) {
+					$$.traducao += retrieveFrom(type, $1.label, $3.label, $$.label);
+				} else {
+					$$.traducao += setAccess(type, $1.label, $3.label, $$.label);
+				}
 				
 				//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
 				
@@ -475,27 +502,6 @@ E 			: E TK_ATRIB E {
 					yyerror($3.label + " nao pertence ao struct");
 				}
 				
-				$$.label = generateVarLabel();
-				$$.tipo = tipo;
-				accessT = *tipo;
-				accessT.trad = TIPO_PTR_TRAD;
-				declararLocal(&accessT, $$.label);
-				
-				$$.traducao = setAccess(type, $1.label, $3.label, $$.label);
-				if (belongsTo(tipo, GROUP_PTR)) {
-					std::string ptr, check;
-					std::string ifLabel = generateLabel();
-					ptr = generateVarLabel();
-					check = generateVarLabel();
-					declararLocal(&tipo_ptr, ptr);
-					declararLocal(&tipo_bool, check);
-					$$.traducao += retrieveFrom(type, $1.label, $3.label, ptr);
-					$$.traducao += newLine(check+" = "+ptr+"!=NULL");
-					$$.traducao += newLine("if ("+check+") goto "+ifLabel);
-					$$.traducao += "\t" + newLine("std::cout << \"Erro: tentativa de acesso a membro nulo\" << std::endl");
-					$$.traducao += "\t" + newLine("return 1");
-					$$.traducao += newLine(ifLabel+":");
-				}
 			}
 			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
 			{

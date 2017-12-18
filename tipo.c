@@ -181,7 +181,7 @@ string traducaoAtribuicao (void *args) {
 				return INVALID_CAST;
 			}
 			
-			if (belongsTo(rvalue->tipo, GROUP_PTR)) {
+			if (belongsTo(rvalue->tipo, GROUP_PTR) && !belongsTo(rvalue->tipo, GROUP_STRUCT)) {
 				lvalueAddr = generateVarLabel();
 				declararLocal(&tipo_ptr, lvalueAddr);
 			
