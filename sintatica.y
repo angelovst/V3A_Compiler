@@ -31,7 +31,7 @@ CustomType constructingType;
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
-%token TK_PUSH
+%token TK_PUSH TK_LIST_FIRST
 %token TK_DOTS
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -156,12 +156,14 @@ COMANDO 	: E
 			{
 				cout << "Regra COMANDO : TK_ID TK_PUSH E" << endl;	//debug
 				CustomType *t = &customTypes[customTypesIds[$1.label]];
+				Tipo np;
 				Tipo *dataT;
 				std::string data;
 				if (t == NULL) {
 					yyerror($1.label + " nao declarado ou nao e uma lista");
 				}
-				dataT = getTipo(t, TYPE_MEMBER);
+				np = nonPtr(getTipo(t, TYPE_MEMBER));
+				dataT = &np;
 				if (dataT == NULL) {
 					yyerror($1.label + " nao e uma lista");
 				}
@@ -178,9 +180,10 @@ COMANDO 	: E
 
 E 			: E TK_ATRIB E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno;
+				$$.traducao = "";
+				retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -189,14 +192,13 @@ E 			: E TK_ATRIB E {
 				} else if (retorno == VAR_UNDECLARED) {
 					yyerror("Variavel nao declarada");
 				}
-
-				$$ = atrib;
+				
+				$$.traducao += retorno;
 			}
 			| E TK_PLUS E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -206,13 +208,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MINUS E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -222,13 +223,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MULT E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -238,13 +238,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_DIV E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -254,13 +253,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_AND E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -270,13 +268,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_OR E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -286,13 +283,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_DIFERENTE E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -302,13 +298,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_IGUAL E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -318,13 +313,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MAIOR E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -334,13 +328,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MENOR E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -350,13 +343,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MAIORI E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -366,13 +358,12 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| E TK_MENORI E {
 
-				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug				
-				atributos atrib;
-				string retorno = traducaoOperadores($1, $2, $3, &atrib);
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
 					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
@@ -382,7 +373,7 @@ E 			: E TK_ATRIB E {
 					yyerror("Variavel nao declarada");
 				}
 
-				$$ = atrib;
+				$$.traducao = retorno;
 			}
 			| '(' TIPO ')' E
 			{	
@@ -420,14 +411,22 @@ E 			: E TK_ATRIB E {
 				if ($1.tipo == NULL) {
 					yyerror($1.label + " nao declarada anteriormente");
 				}
-				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+				//cout << $1.label << "= " << hex << $1.tipo->id << endl;	//debug
+				if (!belongsTo($1.tipo, GROUP_STRUCT) && !belongsTo($1.tipo, GROUP_PTR)) {
+					yyerror($1.label + " nao e um struct");
+				}
+				if (customTypes.count($1.tipo->id) == 0) {
+					//cout << "here" << endl;	//debug
 					yyerror($1.label + " nao e um struct");
 				}
 				
-				CustomType &type = customTypes[$1.tipo->id];
-				Tipo *tipo = getTipo(&type, $3.label);
+				CustomType *type = &customTypes[$1.tipo->id];
+				Tipo *tipo = getTipo(type, $3.label);
+				Tipo accessT;
 				
 				//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
+				
+				//cout << hex << tipo->id << endl;	//debug
 				
 				if (tipo == NULL) {
 					yyerror($3.label + " nao pertence ao struct");
@@ -435,9 +434,11 @@ E 			: E TK_ATRIB E {
 				
 				$$.label = generateVarLabel();
 				$$.tipo = tipo;
-				declararLocal(&tipo_ptr, $$.label);
+				accessT = *tipo;
+				accessT.trad = TIPO_PTR_TRAD;
+				declararLocal(&accessT, $$.label);
 				
-				$$.traducao = setAccess(&type, $1.label, $3.label, $$.label);
+				$$.traducao = setAccess(type, $1.label, $3.label, $$.label);
 			}
 			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
 			{

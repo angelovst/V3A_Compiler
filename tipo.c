@@ -162,7 +162,7 @@ string traducaoAtribuicao (void *args) {
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
 		traducao = cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	} else {
-		string rvalueAddr;
+		string rvalueAddr, lvalueAddr;
 		if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
 			rvalueAddr = generateVarLabel();
 			declararLocal(&tipo_ptr, rvalueAddr);
@@ -179,6 +179,30 @@ string traducaoAtribuicao (void *args) {
 	}	
 
 	return traducao;
+}
+
+string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno) {
+	//cout << "Funcao traducaoOperadores : " << atr1.label << " " << atr2.label << " " << atr3.label << endl;	//debug
+	void *args[4];
+	string traducao;
+	
+	atrRetorno->label = generateVarLabel();	//retorno
+	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
+		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
+	} else {
+		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
+	}
+	declararLocal(atrRetorno->tipo, atrRetorno->label);
+	traducao = atr1.traducao + atr3.traducao;
+	
+	args[0] = &atr1;
+	args[1] = &atr3;
+	args[2] = &atrRetorno->label;
+	args[3] = &atr2.label;
+	
+	traducao += atr2.tipo->traducaoParcial((void*)args);
+
+	return traducao;	
 }
 
 //CONTEXTO
@@ -221,30 +245,4 @@ bool declararLocal (Tipo *tipo, const std::string &label) {
 	top->vars[label] = tipo;
 	//cout << "declaracao " << tipo->trad << " " << label << endl;	//debug
 	return true;
-}
-
-string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atributos *atrRetorno) {
-	//cout << "Funcao traducaoOperadores : " << atr1.label << " " << atr2.label << " " << atr3.label << endl;	//debug
-	void *args[4];
-	string traducao;
-	
-	atrRetorno->label = generateVarLabel();	//retorno
-	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
-		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
-	} else {
-		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
-	}
-	declararLocal(atrRetorno->tipo, atrRetorno->label);
-	atrRetorno->traducao = atr1.traducao + atr3.traducao;
-	
-	args[0] = &atr1;
-	args[1] = &atr3;
-	args[2] = &atrRetorno->label;
-	args[3] = &atr2.label;
-	
-	traducao = atr2.tipo->traducaoParcial((void*)args);
-	
-	atrRetorno->traducao += traducao;
-
-	return traducao;	
 }
