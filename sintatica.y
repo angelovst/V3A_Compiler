@@ -205,7 +205,7 @@ COMANDO 	: E
 			
 			| TK_ID TK_PUSH E TK_AFTER E
 			{
-				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_AFTER TK_ID" << endl;	//debug
+				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_AFTER E" << endl;	//debug
 				if (customTypesIds.count($1.label) == 0) {
 					yyerror($1.label + " nao declarado ou nao e uma lista");
 				}
@@ -242,7 +242,7 @@ COMANDO 	: E
 			}
 			| TK_ID TK_PUSH E TK_BEFORE E
 			{
-				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_AFTER TK_ID" << endl;	//debug
+				cout << "Regra COMANDO : TK_ID TK_PUSH E TK_BEFORE E" << endl;	//debug
 				if (customTypesIds.count($1.label) == 0) {
 					yyerror($1.label + " nao declarado ou nao e uma lista");
 				}
@@ -710,7 +710,7 @@ E 			: E TK_ATRIB E {
 				
 				$$.tipo = dataT;
 				//cout << $$.tipo->trad << endl;	//debug
-				cout << hex << $$.tipo->id << endl;	//debug
+				//cout << hex << $$.tipo->id << endl;	//debug
 				$$.label = generateVarLabel();
 				declararLocal($$.tipo, $$.label);
 				
@@ -1386,40 +1386,38 @@ PRINT		: TK_PRINT PRINT_ALT
 			}
 			;
 			
-PRINT_ALT	: E	TK_ENDL
+PRINT_E		: E
 			{
-				cout << "Regra PRINT_ALT : E TK_ENDL" << endl;	//debug
+				cout << "Regra PRINT_E : E" << endl;	//debug
 				if (findVar($1.label) == NULL) {
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao;
 				if (!belongsTo($1.tipo, GROUP_PTR)) {
-					$$.label = " << " + $1.label + " << std::endl";
+					$$.label = " << " + $1.label;
 				} else {
 					std::string var;
 					Tipo *t = nonPtr($1.tipo);
 					$$.tipo = t;
 					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
-					$$.label = " << " + var + " << std::endl";
+					$$.label = " << " + var;
 				}
 			}
-
-			| E ',' PRINT_ALT
+			;
+			
+PRINT_ALT	: PRINT_E
 			{
-				cout << "Regra PRINT_ALT : E , PRINT_ALT" << endl;	//debug
-				if (findVar($1.label) == NULL) {
-					yyerror("Variavel " + $1.label + " nao declarada");
-				}
+				cout << "Regra PRINT_ALT : PRINT_E" << endl;	//debug
+				$$.tipo = $1.tipo;
+				$$.label = $1.label + " << std::endl";
+				$$.traducao = $1.traducao;
+			}
+
+			| PRINT_E ',' PRINT_ALT
+			{
+				cout << "Regra PRINT_ALT : PRINT_E , PRINT_ALT" << endl;	//debug
+				$$.label = $1.label + " << \" \" << " + $3.label;
 				$$.traducao = $1.traducao + $3.traducao;
-				if (!belongsTo($1.tipo, GROUP_PTR)) {
-					$$.label = " << " + $1.label + " << \" \" " + $3.label;
-				} else {
-					std::string var;
-					Tipo *t = nonPtr($1.tipo);
-					$$.tipo = t;
-					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
-					$$.label = " << " + var + " << \" \" " + $3.label;
-				}
 			}
 			;
 
@@ -1506,7 +1504,7 @@ int main (int argc, char **args) {
 }
 
 void yyerror( string MSG ) {
-	cout << "Linha " << line << ": " << MSG << endl;
+	cout << "Linha " << (int)line << ": " << MSG << endl;
 	closeFiles();
 	exit (0);
 }

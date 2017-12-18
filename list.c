@@ -42,7 +42,9 @@ std::string newList (Tipo *tipo, std::string &label) {
 	if (!createCustomType(&ct, label)) {
 		return VAR_ALREADY_DECLARED;
 	}
-	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, true);
+	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, false);
+	contextStack.begin()->garbageCollect += delete_list(&customTypes[ct.tipo.id], label);
+	contextStack.begin()->garbageCollect += newLine("free("+label+")");
 	return traducao;
 }
 
@@ -215,6 +217,9 @@ std::string iterator_remove (CustomType *list, const std::string &listLabel, Cus
 	
 	traducao += newLine(elseLabel+":");
 	
+	//free iterator
+	traducao += newLine("free("+iterator+")");
+	
 	return traducao;
 }
 
@@ -348,6 +353,41 @@ std::string pop_front (CustomType *list, const std::string &label, const std::st
 	traducao += newLine("if ("+check+") goto "+ifLabel);
 	traducao += iterator_remove(list, label, nodeType(t), first, removed);
 	traducao += newLine(ifLabel + ":");
+	
+	return traducao;
+}
+
+std::string delete_list (CustomType *list, const std::string &label) {
+	std::string traducao = "";
+	std::string deleting, next, check;
+	std::string loopEnd, loopBegin;
+	Tipo *t = getTipo(list, TYPE_MEMBER);
+	CustomType *node = nodeType(t);
+	
+	deleting = generateVarLabel();
+	next = generateVarLabel();
+	check = generateVarLabel();
+	declararLocal(&tipo_ptr, deleting);
+	declararLocal(&tipo_ptr, next);
+	declararLocal(&tipo_bool, check);
+	
+	//deleting = list.first
+	traducao += retrieveFrom(list, label, FIRST_MEMBER, deleting);
+	//if deleting.end goto loopEnd
+	loopEnd = generateLabel();
+	loopBegin = generateLabel();
+	traducao += ident() + loopBegin + ":\n";
+	traducao += iterator_end(deleting, check);
+	traducao += newLine("if ("+check+") goto "+loopEnd);
+		//next = deleting.next
+	traducao += retrieveFrom(node, deleting, NEXT_MEMBER, next);
+		//free(deleting)
+	traducao += newLine("free("+deleting+")");
+		//deleting = next
+	traducao += newLine(deleting+" = "+next);
+	traducao += newLine("goto "+loopBegin);
+	
+	traducao += newLine(loopEnd+":");
 	
 	return traducao;
 }

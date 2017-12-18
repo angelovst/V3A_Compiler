@@ -24,3 +24,5 @@ std::string push_front (CustomType *list, const std::string &label, const std::s
 
 std::string pop_back (CustomType *list, const std::string &label, const std::string &removed);
 std::string pop_front (CustomType *list, const std::string &label, const std::string &removed);
+
+std::string delete_list (CustomType *list, const std::string &label);
