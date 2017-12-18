@@ -88,6 +88,31 @@ for i from 0 to m2's rows do:
 	print m2[i]
 end
 
+int list l
+
+for i from 0 to 4 do:
+	l push back i		//adicionar i ao fim de l
+	l push front i-2	//adicionar i-2 ao inicio de l
+end
+
+it <- l's first
+for i from 0 to 2 do:
+	it <- it's next
+end
+
+l push 10 after it	//adiciona 10 logo apos iterador
+l push 6 before it	//adiciona 6 logo antes de iterador
+
+print l pop it		//remove elemento no indice do iterador
+print l pop back	//remove ultimo elemento
+print l pop front	//remove primeiro elemento
+
+it <- l's first
+while it inbounds do:
+	print it's content
+	it <- it's next
+end
+
 
 ```
 
