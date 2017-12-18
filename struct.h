@@ -30,7 +30,9 @@ bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::
 
 Tipo* getTipo (CustomType *type, const std::string &member);	//retorna tipo do membro do struct ou NULL caso struct nao possua membro
 
-std::string setAccess (CustomType *type, const std::string &instance, const std::string &member, const std::string &accessVar);	//atribui valor do membro a variavel de acesso
+std::string setAccess (CustomType *type, const std::string &instance, const std::string &member, const std::string &accessVar);	//atribui endereco do membro a variavel de acesso
+std::string attrTo (CustomType *type, const std::string &instance, const std::string &member, const std::string &value);	//atribui valor de value ao membro
+std::string retrieveFrom (CustomType *type, const std::string &instance, const std::string &member, const std::string &dst);	//atribui valor do membro a dst
 
 std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage);	//declara nova instancia do struct e marca a instancia para ser excluida ao fim do bloco ou nao
 
