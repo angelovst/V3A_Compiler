@@ -10,7 +10,8 @@
 
 #include "struct.h"
 
-std::string newList (Tipo *tipo, std::string &label);
+CustomType* nodeType (Tipo *tipo);
+std::string newList (Tipo *tipo, const std::string &label);
 
 std::string iterator_end (const std::string &iterator, const std::string &result);
 std::string iterator_inbounds (const std::string &iterator, const std::string &result);

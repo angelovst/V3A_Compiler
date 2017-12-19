@@ -91,13 +91,19 @@ std::string retrieveFrom (CustomType *type, const std::string &instance, const s
 	return traducao;
 }
 
-std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage) {
+std::string newInstanceOf (CustomType *type, const std::string &label, bool collectGarbage, bool global) {
 	std::string traducao = "";
 	std::string accessVar, ptr;
 	
-	if (!declararLocal(&type->tipo, label)) {
-		return VAR_ALREADY_DECLARED;
-	}
+	if (!global) {
+		if (!declararLocal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}
+	} else {
+		if (!declararGlobal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}		
+	}	
 	accessVar = generateVarLabel();
 	declararLocal(&tipo_ptr, accessVar);
 	
@@ -117,7 +123,13 @@ std::string newInstanceOf (CustomType *type, std::string &label, bool collectGar
 	traducao += "\n";
 	
 	if (collectGarbage) {
-		contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		if (!global) {
+			contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		} else {
+			std::list<Context>::iterator i = contextStack.end();
+			i--;
+			i->garbageCollect += newLine("free("+label+")");
+		}	
 	}
 	
 	return traducao;

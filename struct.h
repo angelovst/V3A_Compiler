@@ -36,7 +36,7 @@ std::string setAccess (CustomType *type, const std::string &instance, const std:
 std::string attrTo (CustomType *type, const std::string &instance, const std::string &member, const std::string &value);	//atribui valor de value ao membro
 std::string retrieveFrom (CustomType *type, const std::string &instance, const std::string &member, const std::string &dst);	//atribui valor do membro a dst
 
-std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage);	//declara nova instancia do struct e marca a instancia para ser excluida ao fim do bloco ou nao
+std::string newInstanceOf (CustomType *type, const std::string &label, bool collectGarbage, bool global);	//declara nova instancia do struct e marca a instancia para ser excluida ao fim do bloco ou nao
 
 //mapa de tipos criados
 extern std::map<std::string, unsigned int> customTypesIds;

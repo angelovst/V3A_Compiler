@@ -1,14 +1,21 @@
 #include "matrix.h"
 #include "helper.h"
+#include <iostream>
 
-std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, const std::string &rowsVar, const std::string &columsVar) {
+std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, bool global, const std::string &rowsVar, const std::string &columsVar) {
 	std::string traducao = "";
 	std::string accessVar;
 	std::string size, ptr;
 	
-	if (!declararLocal(&type->tipo, label)) {
-		return VAR_ALREADY_DECLARED;
-	}
+	if (!global) {
+		if (!declararLocal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}
+	} else {
+		if (!declararGlobal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}	
+	}	
 	accessVar = generateVarLabel();
 	declararLocal(&type->tipo, accessVar);
 	
@@ -34,13 +41,19 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	traducao += "\n";
 	
 	if (collectGarbage) {
-		contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		if (!global) {
+			contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		} else {
+			std::list<Context>::iterator i = contextStack.end();
+			i--;
+			i->garbageCollect += newLine("free("+label+")");
+		}	
 	}
 	
 	return traducao;
 }
 
-std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, const std::string &colums) {
+std::string newMatrix (Tipo *tipo, std::string &label, bool global, const std::string &rows, const std::string &colums) {
 	CustomType t = newCustomType();
 	std::string traducao;
 
@@ -55,7 +68,7 @@ std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, 
 		return VAR_ALREADY_DECLARED;
 	}
 	
-	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, true, rows, colums);
+	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, true, global, rows, colums);
 	return traducao;
 	
 }

@@ -23,6 +23,7 @@
 #define GROUP_CHAR			0x04000000
 #define GROUP_FUNCTION		0x10000000
 #define GROUP_STRUCT		0x20000000
+#define GROUP_STRING		GROUP_STRUCT|GROUP_PTR|GROUP_CHAR
 
 #define GROUP_UNCASTABLE	0x80000000
 
@@ -96,7 +97,7 @@ std::string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, 
 //CONTEXTO
 void empContexto (void);
 void desempContexto (void);
-Tipo* findVar(std::string &label);
+Tipo* findVar(const std::string &label);
 bool declararGlobal (Tipo *tipo, const std::string &label);
 bool declararLocal (Tipo *tipo, const std::string &label);
 
@@ -106,6 +107,7 @@ extern Tipo tipo_int;
 extern Tipo tipo_bool;
 extern Tipo tipo_char;
 extern Tipo tipo_ptr;
+extern Tipo tipo_str;
 
 extern Tipo tipo_arithmetic_operator;
 extern Tipo tipo_logic_operator;

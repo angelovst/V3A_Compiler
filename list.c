@@ -24,7 +24,7 @@ CustomType* nodeType (Tipo *tipo) {
 	return &customTypes[t.id];
 }
 
-std::string newList (Tipo *tipo, std::string &label) {
+std::string newList (Tipo *tipo, const std::string &label) {
 	CustomType ct = newCustomType();
 	std::string traducao;
 	Tipo t = *tipo;
@@ -42,7 +42,7 @@ std::string newList (Tipo *tipo, std::string &label) {
 	if (!createCustomType(&ct, label)) {
 		return VAR_ALREADY_DECLARED;
 	}
-	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, false);
+	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, false, false);
 	contextStack.begin()->garbageCollect += delete_list(&customTypes[ct.tipo.id], label);
 	contextStack.begin()->garbageCollect += newLine("free("+label+")");
 	return traducao;
@@ -74,7 +74,7 @@ std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, 
 	traducao += "\t" + newLine("std::cout << \"Erro: tentativa de push apos iterador out of bounds\" << std::endl");
 	traducao += "\t" + newLine("return 1");
 	
-	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false);
+	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false, false);
 	declararLocal(&tipo_ptr, iteratorNext);
 	declararLocal(&tipo_bool, check);
 	
@@ -128,7 +128,7 @@ std::string iterator_pushBefore (CustomType *list, const std::string &listLabel,
 	traducao += "\t" + newLine("std::cout << \"Erro: tentativa de push antes de iterador out of bounds\" << std::endl");
 	traducao += "\t" + newLine("return 1");
 	
-	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false);
+	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false, false);
 	declararLocal(&tipo_ptr, iteratorPrev);
 	declararLocal(&tipo_bool, check);
 	
@@ -252,7 +252,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
 	traducao += ident() + "//new node\n";
-	traducao += newInstanceOf(nodeType(t), n, false);
+	traducao += newInstanceOf(nodeType(t), n, false, false);
 	traducao += attrTo(nodeType(t), n, NODE_DATA_MEMBER, data);
 		//list.first = newNode
 	traducao += attrTo(list, label, FIRST_MEMBER, n);
@@ -293,7 +293,7 @@ std::string push_front (CustomType *list, const std::string &label, const std::s
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
 	traducao += ident() + "//new node\n";
-	traducao += newInstanceOf(nodeType(t), n, false);
+	traducao += newInstanceOf(nodeType(t), n, false, false);
 	traducao += attrTo(nodeType(t), n, NODE_DATA_MEMBER, data);
 		//list.first = newNode
 	traducao += attrTo(list, label, FIRST_MEMBER, n);

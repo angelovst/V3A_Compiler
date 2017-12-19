@@ -18,6 +18,7 @@ CHAR \'(({ASCIIFULL})|(\\{ASCIIFULL}))\'
 ID {LETRA}({LETRA}|{INT})*
 COMENTARIO "//"{ASCII}*"\n"
 COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
+STRING \"({ASCIIFULL}|"\\{ASCIFULL}")*\"
 
 %%
 
@@ -35,6 +36,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 "matrix"	{return TK_TIPO_MATRIX;}
 "vector"	{return TK_TIPO_VECTOR;}
 "list"		{return TK_TIPO_LIST;}
+"string"	{return TK_TIPO_STRING;}
 
 "type"		{return TK_STRUCT;}
 "has"		{return TK_HAS;}
@@ -101,6 +103,7 @@ COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
 {ID}			{ yylval.label = yytext; return TK_ID; }
 {COMENTARIO}	{ yylval.label = yytext; return TK_COMENTARIO; }
 {COMENTARIO_MULT_LINHA} {yylval.label = yytext; return TK_COMENTARIO_MULT_LINHA; }
+{STRING}		{ yylval.label = yytext; return TK_STRING; }
 
 .			{ *yytext; }
 

@@ -10,6 +10,7 @@
 #include "struct.h"
 #include "matrix.h"
 #include "list.h"
+#include "string.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
@@ -25,9 +26,9 @@ CustomType constructingType;
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST TK_STRING
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT TK_SWITCH TK_CASE TK_DEFAULT
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_VECTOR TK_TIPO_LIST TK_TIPO_STR
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_VECTOR TK_TIPO_LIST TK_TIPO_STRING
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
@@ -788,6 +789,22 @@ E 			: E TK_ATRIB E {
 				$$.label = $1.label;
 				$$.traducao = "";
 			}
+			| TK_STRING
+			{
+				cout << "Regra E : TK_STRING" << endl;	//debug
+				CustomType *ct;
+				Tipo *t;
+				
+				$$.label = generateVarLabel();
+				$$.traducao = newString($$.label);
+				
+				t = findVar($$.label);
+				//cout << hex << t->id << endl;	//debug
+				ct = &customTypes[t->id];
+				
+				$$.tipo = t;
+				$$.traducao += attrLiteral(ct, $$.label, $1.label);
+			}
 			;
 			
 DECLARACAO 	: TIPO TK_ID
@@ -835,7 +852,7 @@ DECLARACAO 	: TIPO TK_ID
 				$$.traducao += implicitCast(&$$, &$5, &$$.label, &c1);
 				$$.traducao += implicitCast(&$$, &$8, &$$.label, &c2);
 				
-				tdr = newMatrix($1.tipo, $3.label, c1, c2);
+				tdr = newMatrix($1.tipo, $3.label, false, c1, c2);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}
@@ -863,7 +880,7 @@ DECLARACAO 	: TIPO TK_ID
 				
 				$$.traducao += newLine(colum + " = 1");
 				
-				tdr = newMatrix($1.tipo, $3.label, c1, colum);
+				tdr = newMatrix($1.tipo, $3.label, false, c1, colum);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}
@@ -886,7 +903,7 @@ DECLARACAO 	: TIPO TK_ID
 					yyerror($1.label + " nao nomeia um tipo");
 				}
 				CustomType &c = customTypes[customTypesIds[$1.label]];
-				$$.traducao = newInstanceOf(&c, $2.label, true);
+				$$.traducao = newInstanceOf(&c, $2.label, true, false);
 				if ($$.traducao == VAR_ALREADY_DECLARED) {
 					yyerror($2.label +" ja declarada anteriormente");
 				}
@@ -1393,14 +1410,54 @@ PRINT_E		: E
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao;
-				if (!belongsTo($1.tipo, GROUP_PTR)) {
+				if (!belongsTo($1.tipo, GROUP_PTR) && !belongsTo($1.tipo, GROUP_STRUCT)) {
+					cout << "here" << endl;	//debug
 					$$.label = " << " + $1.label;
 				} else {
-					std::string var;
-					Tipo *t = nonPtr($1.tipo);
-					$$.tipo = t;
-					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
-					$$.label = " << " + var;
+					if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+						std::string var;
+						Tipo *t = nonPtr($1.tipo);
+						$$.tipo = t;
+						$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
+						$$.label = " << " + var;
+					} else {
+						std::string matrix, iterator, str;
+						std::string loopBegin, loopEnd, check;
+						$$.label = " << \"\"";
+						if (customTypes.count($1.tipo->id) == 0) {
+							yyerror ($1.label + " nao e um struct");
+						}
+						CustomType *t = &customTypes[$1.tipo->id];
+						if (getTipo(t, TYPE_MEMBER) == NULL) {
+							yyerror ($1.label + " nao e uma lista");
+						}
+						CustomType *node = nodeType(getTipo(t, TYPE_MEMBER));
+
+						
+						matrix = generateVarLabel();
+						iterator = generateVarLabel();
+						str = generateVarLabel();
+						check = generateVarLabel();
+						
+						declararLocal(&tipo_ptr, matrix);
+						declararLocal(&tipo_ptr, iterator);
+						declararLocal(&tipo_ptr, str);
+						declararLocal(&tipo_bool, check);
+						
+						loopBegin = generateLabel();
+						loopEnd = generateLabel();
+						
+						$$.traducao += retrieveFrom(t, $1.label, FIRST_MEMBER, iterator);
+						$$.traducao += ident() + loopBegin + ":\n";
+						$$.traducao += iterator_end(iterator, check);
+						$$.traducao += newLine("if ("+check+") goto "+loopEnd);
+						$$.traducao += retrieveFrom(node, iterator, NODE_DATA_MEMBER, matrix);
+						$$.traducao += setAccess(str_matrix, matrix, DATA_MEMBER, str);
+						$$.traducao += newLine("std::cout << "+str);
+						$$.traducao += retrieveFrom(node, iterator, NEXT_MEMBER, iterator);
+						$$.traducao += newLine("goto "+loopBegin);
+						$$.traducao += newLine(loopEnd+":");
+					}
 				}
 			}
 			;

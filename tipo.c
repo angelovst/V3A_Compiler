@@ -8,6 +8,7 @@ Tipo tipo_int = { TIPO_INT_ID, sizeof(int), TIPO_INT_TRAD, &castPadrao, NULL, NU
 Tipo tipo_bool = { TIPO_BOOL_ID, sizeof(unsigned char), TIPO_BOOL_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_char = { TIPO_CHAR_ID, sizeof(char), TIPO_CHAR_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_ptr = { GROUP_PTR, sizeof(char*), TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
+Tipo tipo_str = { GROUP_STRING, sizeof(char*), TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
 
 Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, NULL, NULL };
 Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
@@ -244,7 +245,7 @@ void desempContexto (void) {
 	contextDepth--;
 }
 
-Tipo* findVar(string &label) {
+Tipo* findVar(const string &label) {
 	list<Context>::iterator i = contextStack.begin();
 	while (i != contextStack.end() && !i->vars.count(label)) {
 		i++;
@@ -253,7 +254,8 @@ Tipo* findVar(string &label) {
 }
 
 bool declararGlobal (Tipo *tipo, const std::string &label) {
-	list<Context>::iterator bottom = contextStack.end()--;
+	list<Context>::iterator bottom = contextStack.end();
+	bottom--;
 	if (bottom->vars.count(label)) {
 		return false;
 	}
