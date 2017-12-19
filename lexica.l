@@ -97,6 +97,8 @@ STRING \"({STRING_CHAR}|"\\\"")*\"
 "after"		{ return TK_AFTER; }
 "before"	{ return TK_BEFORE; }
 
+"nothing"	{ return TK_NORETURN; }
+
 [(){}[\];,]		{ return *yytext; }
 
 {INT}			{ yylval.label = yytext; return TK_INT; }

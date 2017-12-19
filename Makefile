@@ -1,5 +1,5 @@
 CC = g++ -std=c++11
-OBJS = helper.o tipo.o struct.o matrix.o list.o string.o
+OBJS = helper.o tipo.o struct.o matrix.o list.o string.o function.o
 GTK_PATH = /usr/share/gtksourceview-3.0/language-specs/
 
 all: $(OBJS)

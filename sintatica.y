@@ -11,6 +11,7 @@
 #include "matrix.h"
 #include "list.h"
 #include "string.h"
+#include "function.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
@@ -23,6 +24,8 @@ fstream output;
 FILE *input;
 
 CustomType constructingType;
+Funcao constructingFunction;
+size_t returnCount;
 
 %}
 
@@ -33,7 +36,7 @@ CustomType constructingType;
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
 %token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE
-%token TK_DOTS
+%token TK_DOTS TK_NORETURN
 %token TK_FIM TK_ERROR	TK_ENDL
 
 %start S
@@ -57,7 +60,7 @@ S 			: COMANDOS
 				declararLocal(&tipo_ptr, NULL_VAR);
 				string globalDeclar = contextStack.begin()->declar;
 				string globalGarbageCollect = contextStack.begin()->garbageCollect;
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std; \n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << newLine(string(NULL_VAR)+" = NULL\n") << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std;\n\n" + functionDeclars + "\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << newLine(string(NULL_VAR)+" = NULL\n") << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -279,7 +282,75 @@ COMANDO 	: E
 				$$.traducao = $3.traducao + $5.traducao + implicitCast(&$$, &$3, &$$.label, &data);
 				$$.traducao += iterator_pushBefore(t, $1.label, iteratorT, $5.label, data);		
 			}
-			;			
+			
+			| '(' FUNC_RETURN FUNC_RETURNS TK_ID '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS TK_BLOCO_FECHAR
+			{
+				constructingFunction.traducao = contextStack.begin()->declar + $8.traducao;
+				createFunc(&constructingFunction, $4.label);
+				desempContexto();
+			}
+			;
+			
+FUNC_RETURN		: TIPO
+				{
+					cout << "Regra FUNC_RETURN : TIPO TK_ID" << endl;	//debug
+					constructingFunction = newFunc();
+					returnCount = 0;
+					addRetorno(&constructingFunction, $1.tipo, "_ret"+to_string(returnCount));
+					returnCount++;
+					empContexto();
+				}
+				| TK_NORETURN
+				{
+					cout << "Regra FUNC_RETURN : TK_NORETURN" << endl;	//debug
+					constructingFunction = newFunc();
+					returnCount = 0;
+					empContexto();
+				}
+				;
+				
+FUNC_RETURN2	: TIPO
+				{
+					cout << "Regra FUNC_RETURN2 : TIPO TK_ID" << endl;	//debug
+					addRetorno(&constructingFunction, $1.tipo, "_ret"+to_string(returnCount));
+					returnCount++;
+				}
+				;
+			
+FUNC_RETURNS	: ',' FUNC_RETURN2 FUNC_RETURNS
+				{
+					cout << "Regra FUNC_RETURNS : FUNC_RETURN2 FUNC_RETURNS" << endl;	//debug
+				}
+				| ')'
+				;
+			
+FUNC_ARG	: TIPO TK_ID
+			{
+				cout << "Regra FUNC_ARG : TIPO TK_ID" << endl;	//debug
+				addArg(&constructingFunction, $1.tipo, $2.label, "");
+				contextStack.begin()->vars[$2.label] = $1.tipo;
+			}
+			;
+			
+FUNC_ARGS2	: ',' FUNC_ARG FUNC_ARGS
+			{
+				cout << "Regra FUNC_ARGS2 : , FUNC_ARG FUNC_ARGS" << endl;	//debug
+			}
+			| ')'
+			;
+			
+FUNC_ARGS	: FUNC_ARG FUNC_ARGS2
+			{
+				cout << "Regra FUNC_ARGS : FUNC_ARG FUNC_ARGS2" << endl;	//debug
+			}
+			| ')'
+			;
+			
+FUNC_COMMANDS	: COMANDOS
+				{
+					constructingFunction.traducao += $1.traducao;
+				}
+				;
 
 E 			: E TK_ATRIB E {
 
@@ -545,6 +616,7 @@ E 			: E TK_ATRIB E {
 				}
 				
 				CustomType *type = &customTypes[$1.tipo->id];
+				cout << hex << type->tipo.id << endl;	//debug
 				Tipo *tipo = getTipo(type, $3.label);
 				if (tipo == NULL) {
 					yyerror($1.label + " nao possui membro " + $3.label);
@@ -592,7 +664,7 @@ E 			: E TK_ATRIB E {
 					yyerror($1.label + " nao declarada anteriormente");
 				}
 				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
-					cout << "here" << endl;
+					//cout << "here" << endl;
 					yyerror($1.label + " nao e uma matriz");
 				}
 				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int || !belongsTo($6.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $6.tipo) != &tipo_int) {
@@ -629,7 +701,7 @@ E 			: E TK_ATRIB E {
 					yyerror($1.label + " nao declarada anteriormente");
 				}
 				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
-					cout << "here" << endl;
+					//cout << "here" << endl;
 					yyerror($1.label + " nao e uma matriz");
 				}
 				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int) {
@@ -1432,7 +1504,7 @@ PRINT_E		: E
 				}
 				$$.traducao = $1.traducao;
 				if (!belongsTo($1.tipo, GROUP_PTR) && !belongsTo($1.tipo, GROUP_STRUCT)) {
-					cout << "here" << endl;	//debug
+					//cout << "here" << endl;	//debug
 					$$.label = " << " + $1.label;
 				} else {
 					if (!belongsTo($1.tipo, GROUP_STRUCT)) {
@@ -1494,7 +1566,7 @@ PRINT_ALT	: PRINT_E
 			| PRINT_E ',' PRINT_ALT
 			{
 				cout << "Regra PRINT_ALT : PRINT_E , PRINT_ALT" << endl;	//debug
-				$$.label = $1.label + " << \" \" << " + $3.label;
+				$$.label = $1.label + " << \" \" " + $3.label;
 				$$.traducao = $1.traducao + $3.traducao;
 			}
 			;
@@ -1518,6 +1590,15 @@ TIPO 		: TK_TIPO_INT
 			{
 				cout << "Regra TIPO : TK_TIPO_CHAR" << endl;	//debug
 				$$.tipo = &tipo_char;
+			}
+			| TK_ID
+			{
+				cout << "Regra TIPO : TK_ID" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao nomeia um tipo");
+				}
+				$$.tipo = &customTypes[customTypesIds[$1.label]].tipo;
+				//cout << hex << $$.tipo->id << endl;	//debug
 			}
 			;
 

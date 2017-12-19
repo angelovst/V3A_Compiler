@@ -10,7 +10,7 @@ CustomType newCustomType (void) {
 	static unsigned int id = 1;
 	CustomType c;
 	
-	c.tipo = { GROUP_STRUCT|id, 0, TIPO_PTR_TRAD, NULL, NULL, NULL };
+	c.tipo = { GROUP_STRUCT|GROUP_PTR|id, 0, TIPO_PTR_TRAD, NULL, NULL, NULL };
 	id++;
 	
 	return c;
@@ -34,6 +34,7 @@ bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::
 	type->memberType[label].tipo = *tipo;
 	type->memberType[label].tipo.id |= GROUP_PTR;
 	type->memberType[label].defaultValue = defaultValue;
+	if (belongsTo(tipo, GROUP_STRUCT)) type->memberType[label].tipo.size = tipo_ptr.size;
 	
 	type->tipo.size += tipo->size;
 	return true;
@@ -115,10 +116,18 @@ std::string newInstanceOf (CustomType *type, const std::string &label, bool coll
 	ptr = generateVarLabel();
 	declararLocal(&tipo_ptr, ptr);
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
-		if (i->second.defaultValue != "") {
+		if (i->second.defaultValue != "" && !belongsTo(&i->second.tipo, GROUP_STRUCT)) {
 			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
 			traducao += setAccess(type, label, i->first, accessVar);
 			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");
+		} else if (belongsTo(&i->second.tipo, GROUP_STRUCT)) {
+			std::string instance;
+			
+			instance = generateVarLabel();
+			
+			traducao += ident() + "//INICIALIZANDO MEMBRO INTERNO\n";
+			traducao += newInstanceOf(&customTypes[i->second.tipo.id], instance, true, false);
+			traducao += attrTo(type, label, i->first, instance);
 		}
 	}
 	traducao += "\n";
