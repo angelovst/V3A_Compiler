@@ -7,6 +7,7 @@ extern CustomType *str_matrix;
 
 std::string newString (const std::string &label);
 
+std::string castToString (Tipo *t, const std::string &src, const std::string &dst);
 std::string attrLiteral (CustomType *list, const std::string &label, const std::string &literal);
 
-std::string concat (CustomType *listA, const std::string &a, CustomType *listB, const std::string &b, const std::string &result);
+std::string concat (Tipo *aT, const std::string &a, Tipo *bT, const std::string &b, const std::string &result);

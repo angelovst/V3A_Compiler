@@ -1,4 +1,5 @@
 #include "struct.h"
+#include <iostream>
 
 using namespace std;
 
@@ -103,7 +104,7 @@ std::string newInstanceOf (CustomType *type, const std::string &label, bool coll
 		if (!declararGlobal(&type->tipo, label)) {
 			return VAR_ALREADY_DECLARED;
 		}		
-	}	
+	}
 	accessVar = generateVarLabel();
 	declararLocal(&tipo_ptr, accessVar);
 	

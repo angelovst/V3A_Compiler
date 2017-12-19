@@ -39,6 +39,7 @@ CustomType constructingType;
 %start S
 
 %right TK_ATRIB
+%left TK_CONCAT
 %left TK_OR TK_AND TK_NOT
 %nonassoc TK_IGUAL TK_DIFERENTE
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
@@ -463,7 +464,8 @@ E 			: E TK_ATRIB E {
 
 				$$.traducao = retorno;
 			}
-			| E TK_MENORI E {
+			| E TK_MENORI E
+			{
 
 				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
 				string retorno = traducaoOperadores($1, $2, $3, &$$);
@@ -477,6 +479,25 @@ E 			: E TK_ATRIB E {
 				}
 
 				$$.traducao = retorno;
+			}
+			| E TK_CONCAT E
+			{
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string c;
+				if (findVar($1.label) == NULL) {
+					yyerror("Variavel " + $1.label + " nao declarada");
+				} else if (findVar($3.label) == NULL) {
+					yyerror("Variavel " + $3.label + " nao declarada");
+				}
+				$$.label = generateVarLabel();
+				$$.traducao = $1.traducao + $3.traducao + newString($$.label);
+				$$.tipo = findVar($$.label);
+				
+				c = concat($1.tipo, $1.label, $3.tipo, $3.label, $$.label);
+				if (c == INVALID_CAST) {
+					yyerror("Nao foi possivel efetuar conversao para string");
+				}
+				$$.traducao += c;
 			}
 			| '(' TIPO ')' E
 			{	
@@ -1429,7 +1450,7 @@ PRINT_E		: E
 						}
 						CustomType *t = &customTypes[$1.tipo->id];
 						if (getTipo(t, TYPE_MEMBER) == NULL) {
-							yyerror ($1.label + " nao e uma lista");
+							yyerror ($1.label + " nao e uma string");
 						}
 						CustomType *node = nodeType(getTipo(t, TYPE_MEMBER));
 

@@ -9,6 +9,7 @@ ALGARISMO [0-9]
 LETRA [A-Za-z]
 ASCII [ -~]
 ASCIIFULL [\0-~]
+STRING_CHAR [\0-!#-~]
 
 BOOL ("false"|"true")
 DELIM {ESPACO}+
@@ -18,7 +19,7 @@ CHAR \'(({ASCIIFULL})|(\\{ASCIIFULL}))\'
 ID {LETRA}({LETRA}|{INT})*
 COMENTARIO "//"{ASCII}*"\n"
 COMENTARIO_MULT_LINHA "/*"{ASCIIFULL}*"*/"
-STRING \"({ASCIIFULL}|"\\{ASCIFULL}")*\"
+STRING \"({STRING_CHAR}|"\\\"")*\"
 
 %%
 
@@ -82,6 +83,8 @@ STRING \"({ASCIIFULL}|"\\{ASCIFULL}")*\"
 ">="		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_MAIORI;}
 "<="		{ yylval.label = yytext ; yylval.tipo = &tipo_logic_operator; return TK_MENORI;}
 ":"			{ return TK_DOTS;}
+
+"."			{ return TK_CONCAT; }
 
 "["	{ return TK_OPEN_MEMBER; }
 "]" { return TK_CLOSE_MEMBER; }
