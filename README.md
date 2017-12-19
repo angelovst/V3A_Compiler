@@ -50,17 +50,25 @@ repeat:
 	a <- a+1
 until a = 10
 
-type Person has:
-	char initial
-	int number
+type Date has:
+	int year;
+	int month;
+	int day;
 end
 
-Person bob
+type Person has:
+	Date birthDate;
+	char initial;
+end
 
-bob's number <- 0
+Person bob;
+
+bob's birthDate's year <- 1990;
+bob's birthDate's month <- 4;
+bob's birthDate's day <- 20;
 bob's initial <- 'b'
 
-b <- bob's initial
+print bob's initial, bob's birthDate's day
 
 switch a :
 	case 1 do:
