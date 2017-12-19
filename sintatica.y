@@ -105,10 +105,25 @@ COMANDOS	: COMANDO COMANDOS
 			}	
 			;
 
-COMANDO 	: E
+COMANDO 	: E TK_ATRIB E
 			{
-				cout << "Regra COMANDO : " << $1.label << endl;	//debug
-				$$.traducao = $1.traducao;
+				cout << "Regra COMANDO : TK_ID TK_ATRIB E" << endl;	//debug
+				$$.traducao = $3.traducao;
+				
+				string retorno;
+				$$.traducao = "";
+					
+				retorno = traducaoOperadores($1, $2, $3, &$$);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+				
+				$$.traducao += retorno;
 			}
 
 			| DECLARACAO
@@ -616,7 +631,7 @@ E 			: E TK_ATRIB E {
 				}
 				
 				CustomType *type = &customTypes[$1.tipo->id];
-				cout << hex << type->tipo.id << endl;	//debug
+				//cout << hex << type->tipo.id << endl;	//debug
 				Tipo *tipo = getTipo(type, $3.label);
 				if (tipo == NULL) {
 					yyerror($1.label + " nao possui membro " + $3.label);
@@ -905,9 +920,17 @@ DECLARACAO 	: TIPO TK_ID
 				//cout << "tipo " << $1.tipo->trad << " declarado" << endl;
 				cout << "Regra DECLARACAO : TIPO TK_ID" << endl;	//debug
 				$$.tipo = $1.tipo;
-				if(!declararLocal($1.tipo, $2.label)) {
-					yyerror("Variavel ja declarada localmente");
-				}	
+				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+					if(!declararLocal($1.tipo, $2.label)) {
+						yyerror("Variavel ja declarada localmente");
+					}
+				} else {
+					CustomType &c = customTypes[customTypesIds[$1.label]];
+					$$.traducao = newInstanceOf(&c, $2.label, true, false);
+					if ($$.traducao == VAR_ALREADY_DECLARED) {
+						yyerror($2.label +" ja declarada anteriormente");
+					}
+				}
 
 			}
 
@@ -987,19 +1010,6 @@ DECLARACAO 	: TIPO TK_ID
 					yyerror("Variavel " + $3.label + " ja declarada anteriormente");
 				}
 				$$.traducao = newList($1.tipo, $3.label);
-			}
-			
-			| TK_ID TK_ID
-			{
-				cout << "Regra DECLARACAO : TK_ID TK_ID" <<endl;	//debug
-				if (customTypesIds.count($1.label) == 0) {
-					yyerror($1.label + " nao nomeia um tipo");
-				}
-				CustomType &c = customTypes[customTypesIds[$1.label]];
-				$$.traducao = newInstanceOf(&c, $2.label, true, false);
-				if ($$.traducao == VAR_ALREADY_DECLARED) {
-					yyerror($2.label +" ja declarada anteriormente");
-				}
 			}
 			;
 			
