@@ -35,7 +35,9 @@ LoopLabel* getLoop (unsigned int out) {
 
 LoopLabel* getOuterLoop (void) {
 	if (loopStack.size() > 0) {
-		return &(*(loopStack.end()--));
+		std::list <LoopLabel>::iterator i = loopStack.end();
+		i--;
+		return &(*i);
 	} else {
 		return NULL;
 	}

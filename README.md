@@ -41,13 +41,13 @@ end
 
 while c > b do:
 	print c
-	c <- c-1
+	c <- c--
 end
 
 a <- 0
 repeat:
 	print a
-	a <- a+1
+	a <- a++
 until a = 10
 
 type Date has:
