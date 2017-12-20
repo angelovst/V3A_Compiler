@@ -62,6 +62,8 @@ STRING \"({STRING_CHAR}|"\\\"")*\"
 "case"		{return TK_CASE;}
 "default"	{return TK_DEFAULT;}
 
+"return"	{return TK_RETURN;}
+
 
 "+"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_PLUS;}
 "-"			{ yylval.label = yytext; yylval.tipo = &tipo_arithmetic_operator;return TK_MINUS;}

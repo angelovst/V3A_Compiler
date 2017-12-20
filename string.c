@@ -5,9 +5,7 @@
 CustomType *str_matrix = NULL;
 CustomType *str_list = NULL;
 
-std::string newString (const std::string &label) {
-	std::string traducao = "";
-	
+void initializeString (void) {
 	if (str_matrix == NULL) {
 		CustomType matrix = newCustomType();
 		CustomType str = newCustomType();
@@ -41,6 +39,11 @@ std::string newString (const std::string &label) {
 		str_list = &customTypes[str.tipo.id];
 		
 	}
+}
+
+std::string newString (const std::string &label) {
+	std::string traducao = "";
+
 	traducao += newInstanceOf(str_list, label, true, false);
 	return traducao;
 }

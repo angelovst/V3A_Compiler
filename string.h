@@ -6,6 +6,7 @@
 extern CustomType *str_matrix;
 extern CustomType *str_list;
 
+void initializeString (void);
 std::string newString (const std::string &label);
 
 std::string castToString (Tipo *t, const std::string &src, const std::string &dst);

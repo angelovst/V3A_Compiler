@@ -25,7 +25,10 @@ FILE *input;
 
 CustomType constructingType;
 Funcao constructingFunction;
+string constructingName;
 size_t returnCount;
+string argsStruct;
+bool inFunction = false;
 
 %}
 
@@ -37,6 +40,7 @@ size_t returnCount;
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
 %token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE TK_IN
 %token TK_DOTS TK_NORETURN
+%token TK_RETURN
 %token TK_FIM TK_ERROR	TK_ENDL
 
 %start S
@@ -57,10 +61,9 @@ size_t returnCount;
 S 			: COMANDOS
 			{
 				cout << "Regra S : COMANDOS" << endl;	//debug
-				declararLocal(&tipo_ptr, NULL_VAR);
 				string globalDeclar = contextStack.begin()->declar;
 				string globalGarbageCollect = contextStack.begin()->garbageCollect;
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std;\n\n" + functionDeclars + "\n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << newLine(string(NULL_VAR)+" = NULL\n") << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std;\n\n" + tipo_ptr.trad+" "+string(NULL_VAR)+" = NULL;\n\n" + functionDeclars + "\n\nint main(int argc, char **args)\n{\n" << globalDeclar << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -323,7 +326,8 @@ COMANDO 	: LVALUE TK_ATRIB E
 				cout << "Regra COMANDO : LVALUE TK_ATRIB E" << endl;	//debug;
 				string retorno;
 				$$.traducao = "";
-					
+				
+				//cout << hex << $3.tipo->id << endl;	//debug
 				retorno = traducaoOperadores($1, $2, $3, &$$);
 
 				if (retorno == INVALID_CAST) {
@@ -346,6 +350,11 @@ COMANDO 	: LVALUE TK_ATRIB E
 			| DECLARACAO_STRUCT
 			{
 				cout << "Regra COMANDO : DECLARACAO_STRUCT" << endl;	//debug
+				$$.traducao = $1.traducao;
+			}
+			| FUNCTION_CALL
+			{
+				cout << "Regra COMANDO : FUNCTION_CALL" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			
@@ -371,6 +380,14 @@ COMANDO 	: LVALUE TK_ATRIB E
 				cout << "Regra COMANDO : PRINT" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
+			| FUNC_RETURN_CMD
+			{
+				cout << "Regra COMANDO : FUNC_RETURN_CMD" << endl;	//debug
+				if (!inFunction) {
+					yyerror("Nao e possivel executar retorno fora de funcao");
+				}
+			}
+			
 			| TK_COMENTARIO
 			{
 				cout << "Regra COMANDO : TK_COMENTARIO" << endl;	//debug
@@ -509,20 +526,37 @@ COMANDO 	: LVALUE TK_ATRIB E
 				$$.traducao += iterator_pushBefore(t, $1.label, iteratorT, $5.label, data);		
 			}
 			
-			| '(' FUNC_RETURN FUNC_RETURNS TK_ID '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS TK_BLOCO_FECHAR
+			| '(' FUNC_RETURN FUNC_RETURNS FUNC_DECLARE_NAME '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS
 			{
-				constructingFunction.traducao = contextStack.begin()->declar + $8.traducao;
-				createFunc(&constructingFunction, $4.label);
+				cout << "Regra COMMAND : '(' FUNC_RETURN FUNC_RETURNS TK_ID '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS" << endl;	//debug
+				Funcao *f = getFunction($4.label);
+				f->traducao = $8.traducao;
+				createFunc(f, $4.label);
 				desempContexto();
+				inFunction = false;
 			}
+			/*
+			| '(' FUNC_CALL_RETURN FUNC_CALL_RETURNS TK_ID '(' FUNC_ARGS
+			{
+			
+			}
+			*/
 			;
 			
-FUNC_RETURN		: TIPO
+FUNC_DECLARE_NAME	: TK_ID
+					{
+						cout << "Regra FUNC_DECLARE_NAME : TK_ID" << endl;	//debug
+						constructingName = $1.label;
+					}
+					;
+			
+FUNC_RETURN		: TIPO TK_ID
 				{
 					cout << "Regra FUNC_RETURN : TIPO TK_ID" << endl;	//debug
 					constructingFunction = newFunc();
+					inFunction = true;
 					returnCount = 0;
-					addRetorno(&constructingFunction, $1.tipo, "_ret"+to_string(returnCount));
+					addRetorno(&constructingFunction, $1.tipo, $2.label);
 					returnCount++;
 					empContexto();
 				}
@@ -530,16 +564,33 @@ FUNC_RETURN		: TIPO
 				{
 					cout << "Regra FUNC_RETURN : TK_NORETURN" << endl;	//debug
 					constructingFunction = newFunc();
+					inFunction = true;
 					returnCount = 0;
+					empContexto();
+				}
+				| TIPO
+				{
+					cout << "Regra FUNC_RETURN : TIPO" << endl;	//debug
+					constructingFunction = newFunc();
+					inFunction = true;
+					returnCount = 0;
+					addRetorno(&constructingFunction, $1.tipo, "return"+to_string(returnCount));
+					returnCount++;
 					empContexto();
 				}
 				;
 				
-FUNC_RETURN2	: TIPO
+FUNC_RETURN2	: TIPO TK_ID
 				{
 					cout << "Regra FUNC_RETURN2 : TIPO TK_ID" << endl;	//debug
-					addRetorno(&constructingFunction, $1.tipo, "_ret"+to_string(returnCount));
+					addRetorno(&constructingFunction, $1.tipo, $2.label);
 					returnCount++;
+				}
+				| TIPO
+				{
+					cout << "Regra FUNC_RETURN2 : TIPO" << endl;	//debug
+					addRetorno(&constructingFunction, $1.tipo, "return"+to_string(returnCount));
+					returnCount++;			
 				}
 				;
 			
@@ -563,6 +614,9 @@ FUNC_ARGS2	: ',' FUNC_ARG FUNC_ARGS
 				cout << "Regra FUNC_ARGS2 : , FUNC_ARG FUNC_ARGS" << endl;	//debug
 			}
 			| ')'
+			{
+				declareFunc(&constructingFunction, constructingName);
+			}
 			;
 			
 FUNC_ARGS	: FUNC_ARG FUNC_ARGS2
@@ -570,11 +624,206 @@ FUNC_ARGS	: FUNC_ARG FUNC_ARGS2
 				cout << "Regra FUNC_ARGS : FUNC_ARG FUNC_ARGS2" << endl;	//debug
 			}
 			| ')'
+			{
+				declareFunc(&constructingFunction, constructingName);
+			}
 			;
 			
-FUNC_COMMANDS	: COMANDOS
+FUNC_CMD_RETURN2	: E
+					{
+						cout << "Regra FUNC_CMD_RETURN2 : E" << endl;	//debug
+						if (returnCount >= constructingFunction.retornosLabel.size()) {
+							yyerror("Tentando retornar mais valores do que funcao retorna");
+						}
+						Tipo *t = getRetorno(&constructingFunction, returnCount);
+						string &rlabel = constructingFunction.retornosLabel[returnCount];
+						string attr;
+						
+						$$.tipo = t;
+						$$.label = generateVarLabel();
+						declararLocal(&tipo_ptr, $$.label);
+						
+						if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+							yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+						}
+						
+						//cout << hex << $1.tipo->id << endl;	//debug
+						//cout << hex << $$.tipo->id << endl;	//debug
+						
+						if ($1.tipo->id != nonPtr($$.tipo)->id) {
+							$$.traducao = implicitCast(&$$, &$1, &$$.label, &attr);
+							if ($$.traducao == INVALID_CAST) {
+								yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+							}
+							$$.traducao = $1.traducao + $$.traducao;
+						} else {
+							attr = $1.label;
+							$$.traducao = $1.traducao;
+						}
+						
+						//atribuir valor do retorno
+						$$.traducao += attrTo(&constructingFunction.retornos, RETURN_STRUCT, rlabel, attr);
+						returnCount++;
+					}
+					;
+			
+FUNC_CMD_RETURNS2	: ',' FUNC_CMD_RETURN2 FUNC_CMD_RETURNS2
+					{
+						cout << "Regra FUNC_CMD_RETURNS2 : ',' FUNC_CMD_RETURN2 FUNC_CMD_RETURNS2" << endl;	//debug
+						$$.traducao = $1.traducao + $2.traducao;
+					}
+					|
+					;
+					
+FUNC_CMD_RETURN1ST	: E
+					{
+						cout << "Regra FUNC_CMD_RETURN1ST : E" << endl;	//debug
+						returnCount = 0;
+						if (returnCount >= constructingFunction.retornosLabel.size()) {
+							yyerror("Tentando retornar mais valores do que funcao retorna");
+						}
+						Tipo *t = getRetorno(&constructingFunction, returnCount);
+						string &rlabel = constructingFunction.retornosLabel[returnCount];
+						string attr;
+						
+						$$.tipo = t;
+						$$.label = generateVarLabel();
+						declararLocal(&tipo_ptr, $$.label);
+						
+						if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+							yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+						}
+						
+						//cout << hex << $1.tipo->id << endl;	//debug
+						//cout << hex << $$.tipo->id << endl;	//debug
+						
+						if ($1.tipo->id != nonPtr($$.tipo)->id) {
+							$$.traducao = implicitCast(&$$, &$1, &$$.label, &attr);
+							if ($$.traducao == INVALID_CAST) {
+								yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+							}
+							$$.traducao = $1.traducao + $$.traducao;
+						} else {
+							attr = $1.label;
+							$$.traducao = $1.traducao;
+						}
+						
+						//atribuir valor do retorno
+						$$.traducao += attrTo(&constructingFunction.retornos, RETURN_STRUCT, rlabel, attr);
+						returnCount++;
+					}
+					;
+			
+FUNC_CMD_RETURNS	: FUNC_CMD_RETURN1ST FUNC_CMD_RETURNS2
+					{
+						cout << "Regra FUNC_CMD_RETURNS : FUNC_CMD_RETURN1ST FUNC_CMD_RETURNS2" << endl;	//debug
+						$$.traducao = $1.traducao + $2.traducao;
+					}
+					;
+			
+FUNC_COMMANDS	: COMANDO FUNC_COMMANDS
 				{
-					constructingFunction.traducao += $1.traducao;
+					cout << "Regra FUNC_COMMANDS : COMANDO FUNC_COMMANDS" << endl;	//debug
+					$$.traducao = $1.traducao + $2.traducao;
+				}
+				| TK_BLOCO_FECHAR
+				{
+					cout << "Regra FUNC_COMMANDS : TK_BLOCO_FECHAR" << endl;	//debug
+				}
+				;
+				
+FUNC_RETURN_CMD	: TK_RETURN	FUNC_CMD_RETURNS
+				{
+					cout << "Regra FUNC_RETURN_CMD : TK_RETURN FUNC_CMD_RETURNS FUNC_COMMANDS" << endl;	//debug
+					if (returnCount < constructingFunction.retornosLabel.size()) {
+						yyerror("Tentando retornar menos valores do que funcao retorna");
+					}
+					$$.traducao = $2.traducao;
+					$$.traducao += newLine(string("return ") + RETURN_STRUCT);
+				}
+				;
+				
+FUNC_CALL_ARGS2	: ',' FUNC_CALL_ARG FUNC_CALL_ARGS2
+				{
+					cout << "Regra FUNC_CALL_ARGS2 : ',' FUNC_CALL_ARG FUNC_CALL_ARGS2" << endl;	//debug
+					$$.traducao = $2.traducao + $3.traducao;
+				}
+				| ')'
+				;
+				
+FUNC_CALL_ARG	: E
+				{
+					cout << "Regra FUNC_CALL_ARG : E" << endl;	//debug
+					if (returnCount >= constructingFunction.argsLabel.size()) {
+						yyerror("Tendando passar mais argumentos do que funcao recebe");
+					}
+					Tipo *t = getArg(&constructingFunction, returnCount);
+					if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+						yyerror("Passando tipo incompativel "+$1.label+", esperava "+t->trad);
+					}
+					string arg;
+					$$.tipo = t;
+					$$.label = constructingFunction.argsLabel[returnCount];
+					
+					$$.traducao = $1.traducao+implicitCast(&$$, &$1, &$$.label, &arg);
+					$$.traducao += attrTo(&constructingFunction.args, argsStruct, $$.label, arg);
+					
+					returnCount++;
+				}
+				;
+				
+FUNC_CALL_ARGS	: FUNC_CALL_ARG FUNC_CALL_ARGS2
+				{
+					cout << "Regra FUNC_CALL_ARGS : FUNC_CALL_ARG FUNC_CALL_ARGS2" << endl;	//debug
+					$$.traducao = $1.traducao + $2.traducao;
+				}
+				| ')'
+				;
+				
+FUNCTION_NAME	: TK_ID
+				{
+					cout << "Regra FUNCTION_NAME : TK_ID" << endl;	//debug
+					Funcao *f = getFunction($1.label);
+					if (f == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					constructingFunction = *f;
+					argsStruct = generateVarLabel();
+					$$.traducao = newInstanceOf(&f->args, argsStruct, true, false);
+					returnCount = 0;
+				}
+				;
+				
+FUNCTION_CALL	: FUNCTION_NAME '(' FUNC_CALL_ARGS
+				{
+					cout << "Regra E : FUNCTION_NAME ( FUNC_CALL_ARGS" << endl;	//debug
+					$$.traducao = $1.traducao + $3.traducao;
+					if (constructingFunction.retornosLabel.size() > 1) {
+						$$.tipo = &constructingFunction.retornos.tipo;
+						//cout << hex << $$.tipo->id << dec << endl;	//debug
+						$$.label = generateVarLabel();
+				
+						declararLocal($$.tipo, $$.label);
+				
+						$$.traducao += newLine($$.label+" = "+$1.label+"("+argsStruct+")");
+					} else if (constructingFunction.retornosLabel.size() == 1) {
+						Tipo *t = &constructingFunction.retornos.tipo;
+						string ret = generateVarLabel();
+					
+						$$.label = generateVarLabel();
+						$$.tipo = nonPtr(getRetorno(&constructingFunction, 0));
+					
+						declararLocal($$.tipo, $$.label);
+						declararLocal(&tipo_ptr, ret);
+					
+						$$.traducao += newLine(ret+" = "+$1.label+"("+argsStruct+")");
+						$$.traducao += retrieveFrom(&constructingFunction.retornos, ret, constructingFunction.retornosLabel[0], $$.label);
+					
+					} else {
+						$$.tipo = NULL;
+						$$.label = "";
+						$$.traducao += newLine($1.label+"("+argsStruct+")");
+					}
 				}
 				;
 
@@ -820,6 +1069,14 @@ E 			: E TK_ATRIB E {
 				//cout << "inversao feita" << endl;	//debug
 				$$.label = generateVarLabel();
 				$$.traducao = $2.traducao + newLine($$.label + " = " + " - " + $2.label);
+			}
+			| FUNCTION_CALL
+			{
+				cout << "Regra E : FUNCTION_CALL" << endl;	//debug
+				$$.label = $1.label;
+				$$.tipo = $1.tipo;
+				//cout << hex << $$.tipo->id << endl;	//debug
+				$$.traducao = $1.traducao;
 			}
 			| INCREMENTOS
 			{
@@ -1763,6 +2020,11 @@ TIPO 		: TK_TIPO_INT
 				$$.tipo = &customTypes[customTypesIds[$1.label]].tipo;
 				//cout << hex << $$.tipo->id << endl;	//debug
 			}
+			| TK_TIPO_STRING
+			{
+				cout << "Regra TIPO : TK_TIPO_STRING" << endl;	//debug
+				$$.tipo = &str_list->tipo;
+			}
 			;
 
 %%
@@ -1804,7 +2066,7 @@ int main (int argc, char **args) {
 		cout << "Arquivo \"" << outputFileName << "\" nao pode ser aberto" << endl;
 		return 3;
 	}
-	
+	initializeString();
 	empContexto();
 	//cout << "parsing" << endl;	//debug
 	yyparse();

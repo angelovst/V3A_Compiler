@@ -11,19 +11,29 @@ Funcao newFunc (void) {
 	return f;
 }
 
-bool createFunc (Funcao *f, const std::string &label) {
+bool declareFunc (Funcao *f, const std::string &label) {
 	if (funcMap.count(label) != 0) {
 		return false;
 	}
+	
 	funcMap[label] = *f;
-	functionDeclars += "char *"+label+"(char *args) {\n";
+}
+
+bool createFunc (Funcao *f, const std::string &label) {
+	std::string traducao;
+	traducao = "";
+	
 	for (std::string argL : f->argsLabel) {
 		Tipo *t = getTipo(&f->args, argL);
-		functionDeclars += "\t" + t->trad + " " + argL + ";\n";
-		functionDeclars += retrieveFrom(&f->args, "args", argL, argL);
+		traducao += "\t" + t->trad + " " + argL + ";\n";
+		traducao += retrieveFrom(&f->args, "args", argL, argL);
 	}
-	if (f->retornos.tipo.size > 0) functionDeclars += newInstanceOf(&f->retornos, "_ret", false, false);
+	if (f->retornos.tipo.size > 0) traducao += newInstanceOf(&f->retornos, RETURN_STRUCT, false, false);
+	
+	functionDeclars += "char *"+label+"(char *args) {\n"+contextStack.begin()->declar+"\n"+traducao+"\n";
 	functionDeclars += f->traducao + "}\n\n";
+	createCustomType(&f->retornos, std::to_string(f->retornos.tipo.id));
+	createCustomType(&f->args, std::to_string(f->args.tipo.id));
 	return true;
 }
 
@@ -37,6 +47,14 @@ bool addArg (Funcao *f, Tipo *argT, const std::string &argLabel, const std::stri
 	f->argsLabel.push_back(argLabel);
 	
 	return addVar(&f->args, argT, argLabel, defaultValue);
+}
+
+Tipo* getRetorno (Funcao *f, int returnIndex) {
+	return getTipo(&f->retornos, f->retornosLabel[returnIndex]);
+}
+
+Tipo* getArg (Funcao *f, int argIndex) {
+	return getTipo(&f->args, f->argsLabel[argIndex]);
 }
 
 Funcao* getFunction (const std::string &label) {

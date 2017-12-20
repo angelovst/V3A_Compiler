@@ -121,7 +121,7 @@ std::string setIndexAccess (CustomType *matrix, std::string &instance, std::stri
 	traducao += newLine(rows + " = " + rows + "*" + std::to_string(matrix->memberType[DATA_MEMBER].tipo.size));
 	
 	traducao += setAccess(matrix, instance, DATA_MEMBER, accessVar);
-	traducao += newLine(accessVar + " = " + accessVar + "+" + colums) + "\n";
+	traducao += newLine(accessVar + " = " + accessVar + "+" + rows) + "\n";
 	
 	return traducao;
 	

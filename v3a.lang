@@ -14,6 +14,7 @@
 		<style id="char"		_name="Character"			map-to="def:special-char"/>
 		<style id="esc-char"	_name="Escaped Character"	map-to="def:special-char"/>
 		<style id="string"		_name="String"				map-to="def:string"/>
+		<style id="boolean"		_name="Boolean"				map-to="def:special-char"/>
 	</styles>	
 	
 	<definitions>
@@ -35,6 +36,7 @@
 					<keyword>string</keyword>
 					<keyword>matrix</keyword>
 					<keyword>vector</keyword>
+					<keyword>nothing</keyword>
 				</context>
 				
 				<context id="keywords" style-ref="keyword">
@@ -51,6 +53,8 @@
 					<keyword>until</keyword>
 					<keyword>type</keyword>
 					<keyword>has</keyword>
+					<keyword>in</keyword>
+					<keyword>return</keyword>
 				</context>
 				
 				<context id="functions" style-ref="function">
@@ -66,6 +70,11 @@
 					<keyword>after</keyword>
 					<keyword>before</keyword>
 					<keyword>inbounds</keyword>
+				</context>
+				
+				<context id="bool" style-ref="boolean">
+					<keyword>true</keyword>
+					<keyword>false</keyword>
 				</context>
 				
 				<context ref="def:decimal"/>
