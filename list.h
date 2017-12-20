@@ -11,6 +11,7 @@
 #include "struct.h"
 
 CustomType* nodeType (Tipo *tipo);
+CustomType* listType (Tipo *tipo);
 std::string newList (Tipo *tipo, const std::string &label);
 
 std::string iterator_end (const std::string &iterator, const std::string &result);

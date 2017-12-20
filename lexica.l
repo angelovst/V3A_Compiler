@@ -89,6 +89,7 @@ STRING \"({STRING_CHAR}|"\\\"")*\"
 "["	{ return TK_OPEN_MEMBER; }
 "]" { return TK_CLOSE_MEMBER; }
 
+"in"		{ return TK_IN; }
 "push"		{ return TK_PUSH; }
 "pop"		{ return TK_POP; }
 "front"		{ return TK_FRONT; }

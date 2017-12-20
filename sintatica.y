@@ -35,7 +35,7 @@ size_t returnCount;
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
-%token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE
+%token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE TK_IN
 %token TK_DOTS TK_NORETURN
 %token TK_FIM TK_ERROR	TK_ENDL
 
@@ -786,9 +786,10 @@ E 			: E TK_ATRIB E {
 				} else if (findVar($3.label) == NULL) {
 					yyerror("Variavel " + $3.label + " nao declarada");
 				}
+				
 				$$.label = generateVarLabel();
 				$$.traducao = $1.traducao + $3.traducao + newString($$.label);
-				$$.tipo = findVar($$.label);
+				$$.tipo = &str_list->tipo;
 				
 				c = concat($1.tipo, $1.label, $3.tipo, $3.label, $$.label);
 				if (c == INVALID_CAST) {
@@ -990,18 +991,14 @@ E 			: E TK_ATRIB E {
 			| TK_STRING
 			{
 				cout << "Regra E : TK_STRING" << endl;	//debug
-				CustomType *ct;
-				Tipo *t;
 				
 				$$.label = generateVarLabel();
 				$$.traducao = newString($$.label);
 				
-				t = findVar($$.label);
 				//cout << hex << t->id << endl;	//debug
-				ct = &customTypes[t->id];
 				
-				$$.tipo = t;
-				$$.traducao += attrLiteral(ct, $$.label, $1.label);
+				$$.tipo = &str_list->tipo;
+				$$.traducao += attrLiteral(str_list, $$.label, $1.label);
 			}
 			;
 			
@@ -1100,6 +1097,11 @@ DECLARACAO 	: TIPO TK_ID
 					yyerror("Variavel " + $3.label + " ja declarada anteriormente");
 				}
 				$$.traducao = newList($1.tipo, $3.label);
+			}
+			| TK_TIPO_STRING TK_ID
+			{
+				cout << "Regra DECLARACAO : TK_TIPO_STRING TK_ID" << endl;	//debug
+				$$.traducao = newString($2.label);
 			}
 			;
 			
@@ -1330,7 +1332,16 @@ DECLARACAO_NUMERO	: TK_ID
 							yyerror($1.label + " era esperado armazenar numero");
 						}
 					}
-					;	
+					;
+					
+DECLARACAO_ITERADOR	: TIPO TK_ID
+					{
+						cout << "Regra DECLARACAO_ITERADOR : TK_ID" << endl;
+						$$.tipo = newPtr($1.tipo);
+						$$.label = $2.label;
+						declararLocal($$.tipo, $$.label);
+					}
+					;
 			
 FOR	: TK_FOR
 	{
@@ -1509,7 +1520,61 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
 				//cout << "loop translated" << endl;	//debug
 
-			} 
+			}
+			| FOR DECLARACAO_ITERADOR TK_IN TK_ID BLOCO
+			{
+				cout << "Regra LOOP : FOR TK_ID TK_IN TK_ID" << endl;	//debug
+				CustomType *list, *node;
+				Tipo *t = findVar($4.label);
+				Tipo *varT, *nodeT;
+				if (t == NULL) {
+					yyerror($4.label + " nao declarada anteriormente");
+				}
+				if (customTypes.count(t->id) == 0) {
+					yyerror($4.label + " nao e lista");
+				}
+				list = &customTypes[t->id];
+				varT = getTipo(list, TYPE_MEMBER);
+				if (varT == NULL) {
+					yyerror($4.label + " nao e lista");
+				}
+				nodeT = getTipo(list, FIRST_MEMBER);
+				varT = nonPtr(varT);
+				if (varT->id != nonPtr($2.tipo)->id) {
+					yyerror($2.label + " nao e o tipo correto para a lista " + $4.label);
+				}
+				node = &customTypes[nodeT->id];
+				
+				LoopLabel* loop = getLoop(0);
+				string iterator, check;
+				
+				iterator = generateVarLabel();
+				check = generateVarLabel();
+				declararLocal(&tipo_ptr, iterator);
+				declararLocal(&tipo_bool, check);
+				
+				//inicializar iterador
+				$$.traducao = retrieveFrom(list, $4.label, FIRST_MEMBER, iterator);
+				
+				//inicio do loop
+				$$.traducao += ident() + loop->inicio + ":\n";
+				//checar iterador
+				$$.traducao += iterator_end(iterator, check);
+				$$.traducao += newLine("if ("+check+") goto "+loop->fim);
+				//atribuir conteudo do iterador ao ponteiro
+				$$.traducao += setAccess(node, iterator, NODE_DATA_MEMBER, $2.label);
+				//bloco
+				$$.traducao += $5.traducao;
+				//incrementar iterador
+				$$.traducao += retrieveFrom(node, iterator, NEXT_MEMBER, iterator);
+				
+				$$.traducao += newLine("goto "+loop->inicio);
+				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n" + $$.traducao;
+				desempLoop();
+				desempContexto();
+				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
+			}
 
 			| WHILE E BLOCO 
 			{

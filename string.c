@@ -3,12 +3,15 @@
 #include <iostream>
 
 CustomType *str_matrix = NULL;
+CustomType *str_list = NULL;
 
 std::string newString (const std::string &label) {
 	std::string traducao = "";
-	Tipo *t;
+	
 	if (str_matrix == NULL) {
 		CustomType matrix = newCustomType();
+		CustomType str = newCustomType();
+		Tipo t;
 		
 		//create matrix
 		addVar(&matrix, &tipo_int, ROWS_MEMBER, "");
@@ -17,12 +20,25 @@ std::string newString (const std::string &label) {
 		addVar(&matrix, &tipo_char, DATA_MEMBER, "");
 	
 		matrix.tipo.size -= tipo_char.size;
-	
+		
 		customTypes[matrix.tipo.id] = matrix;
 		str_matrix = &customTypes[matrix.tipo.id];
 		
+		//create list
+		t = *(newPtr(&str_matrix->tipo));
+		t.id |= GROUP_STRUCT|GROUP_PTR;
+		t.trad = TIPO_PTR_TRAD;
+		t.size = sizeof(char*);
+	
+		addVar(&str, &t, FIRST_MEMBER, NULL_VAR);
+		addVar(&str, &t, LAST_MEMBER, NULL_VAR);
+		addVar(&str, newPtr(&str_matrix->tipo), TYPE_MEMBER, "");
+	
+		customTypes[str.tipo.id] = str;
+		str_list = &customTypes[str.tipo.id];
+		
 	}
-	traducao += newList(newPtr(&str_matrix->tipo), label);
+	traducao += newInstanceOf(str_list, label, true, false);
 	
 	return traducao;
 }

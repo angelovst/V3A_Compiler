@@ -116,7 +116,7 @@ std::string newInstanceOf (CustomType *type, const std::string &label, bool coll
 	ptr = generateVarLabel();
 	declararLocal(&tipo_ptr, ptr);
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
-		if (i->second.defaultValue != "" && !belongsTo(&i->second.tipo, GROUP_STRUCT)) {
+		if (i->second.defaultValue != "" /*&& !belongsTo(&i->second.tipo, GROUP_STRUCT)*/) {
 			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
 			traducao += setAccess(type, label, i->first, accessVar);
 			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");

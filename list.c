@@ -4,19 +4,19 @@
 
 CustomType* nodeType (Tipo *tipo) {
 	Tipo t = *tipo;
-	t.id |= GROUP_STRUCT|GROUP_PTR;
-	t.trad = TIPO_PTR_TRAD;
-	t.size = tipo_ptr.size;
+	t.id |= GROUP_STRUCT|GROUP_PTR|GROUP_NODE;
 	
 	if (customTypes.count(t.id) == 0) {
 		CustomType add = newCustomType();
+		t.trad = TIPO_PTR_TRAD;
+		t.size = tipo_ptr.size;
 		
 		addVar(&add, tipo, NODE_DATA_MEMBER, "");
 		addVar(&add, &t, NEXT_MEMBER, NULL_VAR);
 		addVar(&add, &t, PREVIOUS_MEMBER, NULL_VAR);
 		
 		customTypes[t.id] = add;
-		createCustomType(&add, std::to_string(t.id));
+		//createCustomType(&add, std::to_string(t.id));
 		
 		//std::cout << "node=" << std::hex << t.id << std::endl;	//debug
 	}
@@ -394,6 +394,5 @@ std::string delete_list (CustomType *list, const std::string &label) {
 	traducao += newLine("goto "+loopBegin);
 	
 	traducao += newLine(loopEnd+":");
-	
 	return traducao;
 }

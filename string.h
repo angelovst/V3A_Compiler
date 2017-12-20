@@ -4,6 +4,7 @@
 #include "matrix.h"
 
 extern CustomType *str_matrix;
+extern CustomType *str_list;
 
 std::string newString (const std::string &label);
 
