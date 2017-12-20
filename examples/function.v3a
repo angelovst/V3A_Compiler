@@ -1,0 +1,29 @@
+(nothing) foo ():
+	print 2
+end
+
+(int, float sum) bar (int x, float y):
+	float z
+	z <- x+y
+	
+	if y > x do:
+		return x, z
+	end
+	return x, y
+end
+
+(float) factorial (int n):
+	if n = 1 do:
+		return 1
+	else do:
+		return n*factorial(n-1)
+	end
+end
+
+foo()
+
+r <- bar(2, 4.0)
+
+print r's return0, r's sum
+
+print factorial (4)

@@ -1,0 +1,22 @@
+type Date has:
+	int year
+	int month
+	int day
+end
+
+type Event has:
+	Date date
+	int hour;
+	int numberOfParticipants <- 10
+end
+
+Event xmasParty
+
+xmasParty's date's year <- 2017
+xmasParty's date's month <- 12
+xmasParty's date's day <- 24
+
+xmasParty's hour <- 15
+
+print xmasParty's date's day, xmasParty's date's month, xmasParty's date's year
+print xmasParty's hour, xmasParty's numberOfParticipants

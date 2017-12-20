@@ -1,0 +1,47 @@
+int list l
+
+for i from 0 to 5 do:
+	l push back i
+	l push front i-5
+end
+
+for int value in l do:
+	print value
+end
+
+print '\n'
+
+iterator <- l's first
+for i from 0 to 2 do:
+	iterator <- iterator's next
+end
+
+l push 64 after iterator
+
+iterator <- l's last
+for i from 0 to 2 do:
+	iterator <- iterator's previous
+end
+
+l push 50 before iterator
+
+for int value in l do:
+	print value
+end
+
+print '\n'
+
+print l pop iterator
+
+b <- l pop back
+print b
+
+print l pop front
+
+print '\n'
+
+iterator <- l's first
+while iterator inbounds do:
+	print iterator's content
+	iterator <- iterator's next
+end
