@@ -5,7 +5,7 @@
 std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, bool global, const std::string &rowsVar, const std::string &columsVar) {
 	std::string traducao = "";
 	std::string accessVar;
-	std::string size, ptr;
+	std::string size, ptr, alloc;
 	
 	if (!global) {
 		if (!declararLocal(&type->tipo, label)) {
@@ -17,7 +17,9 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 		}	
 	}	
 	accessVar = generateVarLabel();
+	alloc = generateVarLabel();
 	declararLocal(&type->tipo, accessVar);
+	declararLocal(&tipo_ptr, alloc);
 	
 	size = generateVarLabel();
 	declararLocal(&tipo_int, size);
@@ -25,7 +27,8 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	traducao += newLine(size + " = " + rowsVar + "*" + columsVar);
 	traducao += newLine(size + " = " + size + "*" + std::to_string(type->memberType[DATA_MEMBER].tipo.size));
 	traducao += newLine(size + " = " + size + "+" + std::to_string(type->tipo.size));
-	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+size+")");
+	traducao += newLine(alloc + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+size+")");
+	traducao += newLine(label + " = " + alloc);
 	
 	//atribuir valores default as variaveis
 	traducao += ident() + "//DEFAULT VALUES\n";
@@ -42,18 +45,18 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	
 	if (collectGarbage) {
 		if (!global) {
-			contextStack.begin()->garbageCollect += newLine("free("+label+")");
+			contextStack.begin()->garbageCollect += newLine("free("+alloc+")");
 		} else {
 			std::list<Context>::iterator i = contextStack.end();
 			i--;
-			i->garbageCollect += newLine("free("+label+")");
+			i->garbageCollect += newLine("free("+alloc+")");
 		}	
 	}
 	
 	return traducao;
 }
 
-std::string newMatrix (Tipo *tipo, std::string &label, bool global, const std::string &rows, const std::string &colums) {
+std::string newMatrix (Tipo *tipo, std::string &label, bool collectGarbage, bool global, const std::string &rows, const std::string &colums) {
 	CustomType t = newCustomType();
 	std::string traducao;
 
@@ -68,7 +71,7 @@ std::string newMatrix (Tipo *tipo, std::string &label, bool global, const std::s
 		return VAR_ALREADY_DECLARED;
 	}
 	
-	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, true, global, rows, colums);
+	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, collectGarbage, global, rows, colums);
 	return traducao;
 	
 }

@@ -96,6 +96,7 @@ std::string retrieveFrom (CustomType *type, const std::string &instance, const s
 std::string newInstanceOf (CustomType *type, const std::string &label, bool collectGarbage, bool global) {
 	std::string traducao = "";
 	std::string accessVar, ptr;
+	std::string alloc;
 	
 	if (!global) {
 		if (!declararLocal(&type->tipo, label)) {
@@ -107,9 +108,12 @@ std::string newInstanceOf (CustomType *type, const std::string &label, bool coll
 		}		
 	}
 	accessVar = generateVarLabel();
+	alloc = generateVarLabel();
 	declararLocal(&tipo_ptr, accessVar);
+	declararLocal(&tipo_ptr, alloc);
 	
-	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
+	traducao += newLine(alloc + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
+	traducao += newLine(label + " = " + alloc);
 	
 	//atribuir valores default as variaveis
 	traducao += ident() + "//DEFAULT VALUES\n";
@@ -120,25 +124,26 @@ std::string newInstanceOf (CustomType *type, const std::string &label, bool coll
 			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
 			traducao += setAccess(type, label, i->first, accessVar);
 			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");
-		} else if (belongsTo(&i->second.tipo, GROUP_STRUCT)) {
+		} else if (belongsTo(&i->second.tipo, GROUP_STRUCT) && i->second.offset < type->tipo.size && !belongsTo(&i->second.tipo, GROUP_PURE_PTR) ) {
 			std::string instance;
-			
-			instance = generateVarLabel();
-			
-			traducao += ident() + "//INICIALIZANDO MEMBRO INTERNO\n";
-			traducao += newInstanceOf(&customTypes[i->second.tipo.id], instance, true, false);
-			traducao += attrTo(type, label, i->first, instance);
+			if (true) {
+				instance = generateVarLabel();
+
+				traducao += ident() + "//INICIALIZANDO MEMBRO INTERNO\n";
+				traducao += newInstanceOf(&customTypes[i->second.tipo.id], instance, true, false);
+				traducao += attrTo(type, label, i->first, instance);
+			}
 		}
 	}
 	traducao += "\n";
 	
 	if (collectGarbage) {
 		if (!global) {
-			contextStack.begin()->garbageCollect += newLine("free("+label+")");
+			contextStack.begin()->garbageCollect += newLine("free("+alloc+")");
 		} else {
 			std::list<Context>::iterator i = contextStack.end();
 			i--;
-			i->garbageCollect += newLine("free("+label+")");
+			i->garbageCollect += newLine("free("+alloc+")");
 		}	
 	}
 	

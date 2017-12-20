@@ -2,7 +2,7 @@
 
 #define FIRST_MEMBER "first"
 #define LAST_MEMBER "last"
-#define TYPE_MEMBER "tipo"
+#define TYPE_MEMBER "_tipo"
 
 #define NODE_DATA_MEMBER "content"
 #define NEXT_MEMBER "next"

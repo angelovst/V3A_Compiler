@@ -995,8 +995,6 @@ E 			: E TK_ATRIB E {
 				$$.label = generateVarLabel();
 				$$.traducao = newString($$.label);
 				
-				//cout << hex << t->id << endl;	//debug
-				
 				$$.tipo = &str_list->tipo;
 				$$.traducao += attrLiteral(str_list, $$.label, $1.label);
 			}
@@ -1055,7 +1053,7 @@ DECLARACAO 	: TIPO TK_ID
 				$$.traducao += implicitCast(&$$, &$5, &$$.label, &c1);
 				$$.traducao += implicitCast(&$$, &$8, &$$.label, &c2);
 				
-				tdr = newMatrix($1.tipo, $3.label, false, c1, c2);
+				tdr = newMatrix($1.tipo, $3.label, true, false, c1, c2);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}
@@ -1083,7 +1081,7 @@ DECLARACAO 	: TIPO TK_ID
 				
 				$$.traducao += newLine(colum + " = 1");
 				
-				tdr = newMatrix($1.tipo, $3.label, false, c1, colum);
+				tdr = newMatrix($1.tipo, $3.label, true, false, c1, colum);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}

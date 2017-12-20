@@ -20,6 +20,7 @@ std::string newString (const std::string &label) {
 		addVar(&matrix, &tipo_char, DATA_MEMBER, "");
 	
 		matrix.tipo.size -= tipo_char.size;
+		matrix.tipo.id |= GROUP_PURE_PTR;
 		
 		customTypes[matrix.tipo.id] = matrix;
 		str_matrix = &customTypes[matrix.tipo.id];
@@ -29,17 +30,18 @@ std::string newString (const std::string &label) {
 		t.id |= GROUP_STRUCT|GROUP_PTR;
 		t.trad = TIPO_PTR_TRAD;
 		t.size = sizeof(char*);
-	
+		
 		addVar(&str, &t, FIRST_MEMBER, NULL_VAR);
 		addVar(&str, &t, LAST_MEMBER, NULL_VAR);
 		addVar(&str, newPtr(&str_matrix->tipo), TYPE_MEMBER, "");
+		
+		str.tipo.size -= newPtr(&str_matrix->tipo)->size;
 	
 		customTypes[str.tipo.id] = str;
 		str_list = &customTypes[str.tipo.id];
 		
 	}
 	traducao += newInstanceOf(str_list, label, true, false);
-	
 	return traducao;
 }
 
@@ -152,7 +154,7 @@ std::string attrLiteral (CustomType *list, const std::string &label, const std::
 	traducao += ident() + "//INITIALIZING STRING PART\n";
 	traducao += newLine(rows+" = "+std::to_string(literal.length()-1));
 	traducao += newLine(colums+" = 1");
-	traducao += newMatrix(&tipo_char, matrix, true, rows, colums);
+	traducao += newMatrix(&tipo_char, matrix, false, true, rows, colums);
 	
 	//storing string
 	traducao += setAccess(str_matrix, matrix, DATA_MEMBER, index);
@@ -160,7 +162,6 @@ std::string attrLiteral (CustomType *list, const std::string &label, const std::
 	
 	//atribute matrix to list
 	traducao += push_back(list, label, matrix);
-	
 	return traducao;
 	
 }
