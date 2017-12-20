@@ -1,16 +1,25 @@
 #include "matrix.h"
 #include "helper.h"
+#include <iostream>
 
-std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, const std::string &rowsVar, const std::string &columsVar) {
+std::string newMatrixInstance (CustomType *type, const std::string &label, bool collectGarbage, bool global, const std::string &rowsVar, const std::string &columsVar) {
 	std::string traducao = "";
 	std::string accessVar;
-	std::string size, ptr;
+	std::string size, ptr, alloc;
 	
-	if (!declararLocal(&type->tipo, label)) {
-		return VAR_ALREADY_DECLARED;
-	}
+	if (!global) {
+		if (!declararLocal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}
+	} else {
+		if (!declararGlobal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}	
+	}	
 	accessVar = generateVarLabel();
+	alloc = generateVarLabel();
 	declararLocal(&type->tipo, accessVar);
+	declararLocal(&tipo_ptr, alloc);
 	
 	size = generateVarLabel();
 	declararLocal(&tipo_int, size);
@@ -18,7 +27,8 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	traducao += newLine(size + " = " + rowsVar + "*" + columsVar);
 	traducao += newLine(size + " = " + size + "*" + std::to_string(type->memberType[DATA_MEMBER].tipo.size));
 	traducao += newLine(size + " = " + size + "+" + std::to_string(type->tipo.size));
-	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+size+")");
+	traducao += newLine(alloc + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+size+")");
+	traducao += newLine(label + " = " + alloc);
 	
 	//atribuir valores default as variaveis
 	traducao += ident() + "//DEFAULT VALUES\n";
@@ -34,13 +44,19 @@ std::string newMatrixInstance (CustomType *type, const std::string &label, bool 
 	traducao += "\n";
 	
 	if (collectGarbage) {
-		contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		if (!global) {
+			contextStack.begin()->garbageCollect += newLine("free("+alloc+")");
+		} else {
+			std::list<Context>::iterator i = contextStack.end();
+			i--;
+			i->garbageCollect += newLine("free("+alloc+")");
+		}	
 	}
 	
 	return traducao;
 }
 
-std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, const std::string &colums) {
+std::string newMatrix (Tipo *tipo, std::string &label, bool collectGarbage, bool global, const std::string &rows, const std::string &colums) {
 	CustomType t = newCustomType();
 	std::string traducao;
 
@@ -55,7 +71,7 @@ std::string newMatrix (Tipo *tipo, std::string &label, const std::string &rows, 
 		return VAR_ALREADY_DECLARED;
 	}
 	
-	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, true, rows, colums);
+	traducao = newMatrixInstance (&customTypes[t.tipo.id], label, collectGarbage, global, rows, colums);
 	return traducao;
 	
 }
@@ -105,7 +121,7 @@ std::string setIndexAccess (CustomType *matrix, std::string &instance, std::stri
 	traducao += newLine(rows + " = " + rows + "*" + std::to_string(matrix->memberType[DATA_MEMBER].tipo.size));
 	
 	traducao += setAccess(matrix, instance, DATA_MEMBER, accessVar);
-	traducao += newLine(accessVar + " = " + accessVar + "+" + colums) + "\n";
+	traducao += newLine(accessVar + " = " + accessVar + "+" + rows) + "\n";
 	
 	return traducao;
 	

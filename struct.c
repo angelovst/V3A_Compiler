@@ -1,4 +1,5 @@
 #include "struct.h"
+#include <iostream>
 
 using namespace std;
 
@@ -9,7 +10,7 @@ CustomType newCustomType (void) {
 	static unsigned int id = 1;
 	CustomType c;
 	
-	c.tipo = { GROUP_STRUCT|id, 0, TIPO_PTR_TRAD, NULL, NULL, NULL };
+	c.tipo = { GROUP_STRUCT|GROUP_PTR|id, 0, TIPO_PTR_TRAD, NULL, NULL, NULL };
 	id++;
 	
 	return c;
@@ -33,6 +34,7 @@ bool addVar (CustomType *type, Tipo *tipo, const std::string &label, const std::
 	type->memberType[label].tipo = *tipo;
 	type->memberType[label].tipo.id |= GROUP_PTR;
 	type->memberType[label].defaultValue = defaultValue;
+	if (belongsTo(tipo, GROUP_STRUCT)) type->memberType[label].tipo.size = tipo_ptr.size;
 	
 	type->tipo.size += tipo->size;
 	return true;
@@ -91,33 +93,58 @@ std::string retrieveFrom (CustomType *type, const std::string &instance, const s
 	return traducao;
 }
 
-std::string newInstanceOf (CustomType *type, std::string &label, bool collectGarbage) {
+std::string newInstanceOf (CustomType *type, const std::string &label, bool collectGarbage, bool global) {
 	std::string traducao = "";
 	std::string accessVar, ptr;
+	std::string alloc;
 	
-	if (!declararLocal(&type->tipo, label)) {
-		return VAR_ALREADY_DECLARED;
+	if (!global) {
+		if (!declararLocal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}
+	} else {
+		if (!declararGlobal(&type->tipo, label)) {
+			return VAR_ALREADY_DECLARED;
+		}		
 	}
 	accessVar = generateVarLabel();
+	alloc = generateVarLabel();
 	declararLocal(&tipo_ptr, accessVar);
+	declararLocal(&tipo_ptr, alloc);
 	
-	traducao += newLine(label + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
+	traducao += newLine(alloc + " = " + "("+TIPO_PTR_TRAD+")"+"malloc("+std::to_string(type->tipo.size)+")");
+	traducao += newLine(label + " = " + alloc);
 	
 	//atribuir valores default as variaveis
 	traducao += ident() + "//DEFAULT VALUES\n";
 	ptr = generateVarLabel();
 	declararLocal(&tipo_ptr, ptr);
 	for (std::map<std::string, CustomTypeMember>::iterator i = type->memberType.begin(); i != type->memberType.end(); i++) {
-		if (i->second.defaultValue != "") {
+		if (i->second.defaultValue != "" /*&& !belongsTo(&i->second.tipo, GROUP_STRUCT)*/) {
 			traducao += newLine(ptr + " = " + "("+TIPO_PTR_TRAD+")"+"&"+i->second.defaultValue);
 			traducao += setAccess(type, label, i->first, accessVar);
 			traducao += newLine("memcpy(" + accessVar + ", " + ptr + ", " + std::to_string(i->second.tipo.size) + ")");
+		} else if (belongsTo(&i->second.tipo, GROUP_STRUCT) && i->second.offset < type->tipo.size && !belongsTo(&i->second.tipo, GROUP_PURE_PTR) ) {
+			std::string instance;
+			if (true) {
+				instance = generateVarLabel();
+
+				traducao += ident() + "//INICIALIZANDO MEMBRO INTERNO\n";
+				traducao += newInstanceOf(&customTypes[i->second.tipo.id], instance, true, false);
+				traducao += attrTo(type, label, i->first, instance);
+			}
 		}
 	}
 	traducao += "\n";
 	
 	if (collectGarbage) {
-		contextStack.begin()->garbageCollect += newLine("free("+label+")");
+		if (!global) {
+			contextStack.begin()->garbageCollect += newLine("free("+alloc+")");
+		} else {
+			std::list<Context>::iterator i = contextStack.end();
+			i--;
+			i->garbageCollect += newLine("free("+alloc+")");
+		}	
 	}
 	
 	return traducao;

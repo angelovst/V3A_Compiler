@@ -4,19 +4,19 @@
 
 CustomType* nodeType (Tipo *tipo) {
 	Tipo t = *tipo;
-	t.id |= GROUP_STRUCT|GROUP_PTR;
-	t.trad = TIPO_PTR_TRAD;
-	t.size = sizeof(char*);
+	t.id |= GROUP_STRUCT|GROUP_PTR|GROUP_NODE;
 	
 	if (customTypes.count(t.id) == 0) {
 		CustomType add = newCustomType();
+		t.trad = TIPO_PTR_TRAD;
+		t.size = tipo_ptr.size;
 		
 		addVar(&add, tipo, NODE_DATA_MEMBER, "");
 		addVar(&add, &t, NEXT_MEMBER, NULL_VAR);
 		addVar(&add, &t, PREVIOUS_MEMBER, NULL_VAR);
 		
 		customTypes[t.id] = add;
-		createCustomType(&add, std::to_string(t.id));
+		//createCustomType(&add, std::to_string(t.id));
 		
 		//std::cout << "node=" << std::hex << t.id << std::endl;	//debug
 	}
@@ -24,7 +24,7 @@ CustomType* nodeType (Tipo *tipo) {
 	return &customTypes[t.id];
 }
 
-std::string newList (Tipo *tipo, std::string &label) {
+std::string newList (Tipo *tipo, const std::string &label) {
 	CustomType ct = newCustomType();
 	std::string traducao;
 	Tipo t = *tipo;
@@ -42,9 +42,11 @@ std::string newList (Tipo *tipo, std::string &label) {
 	if (!createCustomType(&ct, label)) {
 		return VAR_ALREADY_DECLARED;
 	}
-	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, false);
+	
+	traducao += newInstanceOf (&customTypes[ct.tipo.id], label, false, false);
 	contextStack.begin()->garbageCollect += delete_list(&customTypes[ct.tipo.id], label);
 	contextStack.begin()->garbageCollect += newLine("free("+label+")");
+	
 	return traducao;
 }
 
@@ -69,17 +71,18 @@ std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, 
 	ifLabel = generateLabel();
 	elseLabel = generateLabel();
 	
-	traducao = iterator_inbounds(iterator, check);
+	traducao = "\n" + ident() + "//PUSHING\n" + iterator_inbounds(iterator, check);
 	traducao += newLine("if ("+check+") goto "+ifLabel);
 	traducao += "\t" + newLine("std::cout << \"Erro: tentativa de push apos iterador out of bounds\" << std::endl");
 	traducao += "\t" + newLine("return 1");
 	
-	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false);
+	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false, false);
 	declararLocal(&tipo_ptr, iteratorNext);
 	declararLocal(&tipo_bool, check);
 	
 	ifLabel = generateLabel();
 	
+	traducao += ident() + "//INITIALIZING NODE\n";
 	//add data to n
 	traducao += attrTo(node, n, NODE_DATA_MEMBER, data);
 	
@@ -91,6 +94,7 @@ std::string iterator_pushAfter (CustomType *list, const std::string &listLabel, 
 	//n.next = iteratorNext
 	traducao += attrTo(node, n, NEXT_MEMBER, iteratorNext);
 	
+	traducao += ident() + "//INSERTING NODE\n";
 	//if (iteratorNext != NULL) iterator.next.prev = n
 	traducao += iterator_end (iteratorNext, check);
 	traducao += newLine("if ("+check+") goto "+ifLabel);
@@ -128,7 +132,7 @@ std::string iterator_pushBefore (CustomType *list, const std::string &listLabel,
 	traducao += "\t" + newLine("std::cout << \"Erro: tentativa de push antes de iterador out of bounds\" << std::endl");
 	traducao += "\t" + newLine("return 1");
 	
-	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false);
+	traducao += ident() + ifLabel + ":\n" + newInstanceOf(node, n, false, false);
 	declararLocal(&tipo_ptr, iteratorPrev);
 	declararLocal(&tipo_bool, check);
 	
@@ -240,7 +244,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	elseLabel = generateLabel();
 	
 	//last = list.last()
-	traducao = retrieveFrom(list, label, LAST_MEMBER, last);
+	traducao = "\n" + ident() + "//PUSH BACK\n" + retrieveFrom(list, label, LAST_MEMBER, last);
 	
 	//if (!last.end()) last.push_after(data)
 	traducao += iterator_end(last, check);
@@ -252,7 +256,7 @@ std::string push_back (CustomType *list, const std::string &label, const std::st
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
 	traducao += ident() + "//new node\n";
-	traducao += newInstanceOf(nodeType(t), n, false);
+	traducao += newInstanceOf(nodeType(t), n, false, false);
 	traducao += attrTo(nodeType(t), n, NODE_DATA_MEMBER, data);
 		//list.first = newNode
 	traducao += attrTo(list, label, FIRST_MEMBER, n);
@@ -281,7 +285,7 @@ std::string push_front (CustomType *list, const std::string &label, const std::s
 	elseLabel = generateLabel();
 	
 	//first = list.first()
-	traducao = retrieveFrom(list, label, FIRST_MEMBER, first);
+	traducao = "\n" + ident() + "//PUSH FRONT\n" + retrieveFrom(list, label, FIRST_MEMBER, first);
 	
 	//if (!first.end()) first.push_before(data)
 	traducao += iterator_end(first, check);
@@ -293,7 +297,7 @@ std::string push_front (CustomType *list, const std::string &label, const std::s
 	traducao += ident() + ifLabel + ":\n";
 		//newNode
 	traducao += ident() + "//new node\n";
-	traducao += newInstanceOf(nodeType(t), n, false);
+	traducao += newInstanceOf(nodeType(t), n, false, false);
 	traducao += attrTo(nodeType(t), n, NODE_DATA_MEMBER, data);
 		//list.first = newNode
 	traducao += attrTo(list, label, FIRST_MEMBER, n);
@@ -364,6 +368,8 @@ std::string delete_list (CustomType *list, const std::string &label) {
 	Tipo *t = getTipo(list, TYPE_MEMBER);
 	CustomType *node = nodeType(t);
 	
+	//std::cout << std::hex << node->tipo.id << std::endl;	//debug
+	
 	deleting = generateVarLabel();
 	next = generateVarLabel();
 	check = generateVarLabel();
@@ -388,6 +394,5 @@ std::string delete_list (CustomType *list, const std::string &label) {
 	traducao += newLine("goto "+loopBegin);
 	
 	traducao += newLine(loopEnd+":");
-	
 	return traducao;
 }

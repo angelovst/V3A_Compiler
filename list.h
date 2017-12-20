@@ -2,7 +2,7 @@
 
 #define FIRST_MEMBER "first"
 #define LAST_MEMBER "last"
-#define TYPE_MEMBER "tipo"
+#define TYPE_MEMBER "_tipo"
 
 #define NODE_DATA_MEMBER "content"
 #define NEXT_MEMBER "next"
@@ -10,7 +10,9 @@
 
 #include "struct.h"
 
-std::string newList (Tipo *tipo, std::string &label);
+CustomType* nodeType (Tipo *tipo);
+CustomType* listType (Tipo *tipo);
+std::string newList (Tipo *tipo, const std::string &label);
 
 std::string iterator_end (const std::string &iterator, const std::string &result);
 std::string iterator_inbounds (const std::string &iterator, const std::string &result);

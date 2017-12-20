@@ -8,6 +8,7 @@ Tipo tipo_int = { TIPO_INT_ID, sizeof(int), TIPO_INT_TRAD, &castPadrao, NULL, NU
 Tipo tipo_bool = { TIPO_BOOL_ID, sizeof(unsigned char), TIPO_BOOL_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_char = { TIPO_CHAR_ID, sizeof(char), TIPO_CHAR_TRAD, &castPadrao, NULL, NULL, NULL };
 Tipo tipo_ptr = { GROUP_PTR, sizeof(char*), TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
+Tipo tipo_str = { GROUP_STRING, sizeof(char*), TIPO_PTR_TRAD, &castPadrao, NULL, NULL, NULL	};
 
 Tipo tipo_arithmetic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, NULL, NULL };
 Tipo tipo_logic_operator = { TIPO_INF_OP_ID, 0, TIPO_INF_OP_TRAD, NULL, &traducaoLAPadrao, new std::vector<Tipo*>({&tipo_bool}), NULL };
@@ -125,17 +126,50 @@ string traducaoLAPadrao (void *args)  {
 	
 	string varALabel;	//labels[1]
 	string varBLabel;	//labels[3]
+	string ptr;
+	
+	string cast, traducao = "";
 
 	if (atribs[0]->tipo == NULL || atribs[1]->tipo == NULL) {
 		return VAR_UNDECLARED;
 	}
 	
-	string cast = implicitCast (atribs[0], atribs[1], &varALabel, &varBLabel);
+	if (belongsTo(atribs[0]->tipo, GROUP_PTR)) {
+		Tipo *t = nonPtr(atribs[0]->tipo);
+		
+		varALabel = generateVarLabel();
+		ptr = generateVarLabel();
+		
+		declararLocal(t, varALabel);
+		declararLocal(&tipo_ptr, ptr);
+		
+		traducao += newLine(ptr+" = ("+TIPO_PTR_TRAD+")&"+varALabel);
+		traducao += newLine("memcpy("+ptr+", "+atribs[0]->label+", "+std::to_string(t->size)+")");
+		atribs[0]->label = varALabel;
+		atribs[0]->tipo = t;
+	}
+	
+	if (belongsTo(atribs[1]->tipo, GROUP_PTR)) {
+		Tipo *t = nonPtr(atribs[1]->tipo);
+		
+		varALabel = generateVarLabel();
+		ptr = generateVarLabel();
+		
+		declararLocal(t, varALabel);
+		declararLocal(&tipo_ptr, ptr);
+		
+		traducao += newLine(ptr+" = ("+TIPO_PTR_TRAD+")&"+varALabel);
+		traducao += newLine("memcpy("+ptr+", "+atribs[1]->label+", "+std::to_string(t->size)+")");
+		atribs[1]->label = varALabel;
+		atribs[1]->tipo = t;
+	}
+	
+	cast = implicitCast (atribs[0], atribs[1], &varALabel, &varBLabel);
 	if (cast == INVALID_CAST) {
 		return INVALID_CAST;
 	}	
 	
-	return cast + newLine(*retorno + " = " + varALabel + *operador + varBLabel);
+	return traducao + cast + newLine(*retorno + " = " + varALabel + *operador + varBLabel);
 }
 
 string traducaoAtribuicao (void *args) {
@@ -144,6 +178,7 @@ string traducaoAtribuicao (void *args) {
 	atributos *rvalue = atribs[1];
 	string *retorno = *((string**)((atributos**)args+2));
 	string traducao = "";
+	string cast;
 	
 	if (lvalue->tipo == NULL) lvalue->tipo = findVar(lvalue->label);
 	//declarar variavel caso ainda nao tenha sido declarada
@@ -159,28 +194,54 @@ string traducaoAtribuicao (void *args) {
 	//if (!belongsTo(lvalue->tipo, GROUP_PTR)) cout << "is not ptr" << endl;	//debug
 	
 	if (!belongsTo(lvalue->tipo, GROUP_PTR)) {
-		int rightGroup = getGroup(rvalue->tipo)&getGroup(lvalue->tipo);
-		string cast;
+		Tipo *t = nonPtr(rvalue->tipo);
+		int rightGroup = getGroup(lvalue->tipo)&getGroup(t);
 		string rlabel, llabel;
-		if (rightGroup = 0 || rightGroup != 0 && rvalue->tipo->id > lvalue->tipo->id) {
+		//std::cout << std::hex << lvalue->tipo->id << std::endl;	//debug
+		//std::cout << std::hex << t->id << std::endl;	//debug
+		//std::cout << std::hex << rightGroup << std::endl;	//debug
+		if (rightGroup == 0 || rightGroup != 0 && lvalue->tipo->id < t->id) {
+			//std::cout << "here" << std::endl;	//debug
 			return INVALID_CAST;
 		}
 		cast = implicitCast(lvalue, rvalue, &llabel, &rlabel);
 		traducao += cast + newLine(llabel + " = " + rlabel) + ((retorno != NULL) ? newLine(*retorno + " = " + llabel) : "");
 	} else {
 		string rvalueAddr, lvalueAddr;
+		Tipo *a, *b;
+		string rlabel;
+		
+		a = lvalue->tipo;
+		b = rvalue->tipo;
+		
+		lvalue->tipo = nonPtr(a);
+		rvalue->tipo = nonPtr(b);
+		
+		if (lvalue->tipo < rvalue->tipo) {
+			//return INVALID_CAST;
+		}
+		
+		cast = implicitCast(lvalue, rvalue, &lvalue->label, &rlabel);
+		if (cast == INVALID_CAST) {
+			return INVALID_CAST;
+		}
+		
+		lvalue->tipo = a;
+		rvalue->tipo = b;
+		
+		traducao += cast + ident() + "//ATTR\n";
 		if (!belongsTo(lvalue->tipo, GROUP_STRUCT)) {
 			if (!belongsTo(rvalue->tipo, GROUP_PTR)) {
 				rvalueAddr = generateVarLabel();
 				declararLocal(&tipo_ptr, rvalueAddr);
-				traducao += newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rvalue->label);
+				traducao += newLine(rvalueAddr + " = (" + TIPO_PTR_TRAD + ")&" + rlabel);
 			} else {
 				/*
 				if (rvalue->tipo->size == 0) {
 					return VOID_POINTER;
 				}
 				*/
-				rvalueAddr = rvalue->label;
+				rvalueAddr = rlabel;
 			}
 			traducao += newLine("memcpy("+lvalue->label+", "+rvalueAddr+", "+to_string(rvalue->tipo->size)+")");
 		} else {
@@ -196,7 +257,7 @@ string traducaoAtribuicao (void *args) {
 				traducao += newLine("memcpy("+lvalueAddr+", "+rvalue->label+", "+to_string(tipo_ptr.size)+")");
 			} else {
 				traducao += newLine(lvalue->label+" = "+rvalue->label);
-			}	
+			} 
 		}
 		
 		
@@ -211,13 +272,6 @@ string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atrib
 	string traducao, trdParcial;
 	
 	atrRetorno->label = generateVarLabel();	//retorno
-	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
-		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
-	} else {
-		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
-	}
-	declararLocal(atrRetorno->tipo, atrRetorno->label);
-	traducao = atr1.traducao + atr3.traducao;
 	
 	args[0] = &atr1;
 	args[1] = &atr3;
@@ -229,6 +283,14 @@ string traducaoOperadores( atributos atr1, atributos atr2, atributos atr3, atrib
 	if (trdParcial == INVALID_CAST || trdParcial == VAR_ALREADY_DECLARED || trdParcial == VAR_UNDECLARED) {
 		return trdParcial;
 	}
+	
+	if (atr2.tipo->retornos == NULL) {	//caso retorno nao seja especificado inferir o tipo
+		atrRetorno->tipo = resolverTipo(atr1.tipo, atr3.tipo);
+	} else {
+		atrRetorno->tipo = (*atr2.tipo->retornos)[0];
+	}
+	declararLocal(atrRetorno->tipo, atrRetorno->label);
+	traducao = atr1.traducao + atr3.traducao;
 
 	return traducao + trdParcial;	
 }
@@ -244,7 +306,7 @@ void desempContexto (void) {
 	contextDepth--;
 }
 
-Tipo* findVar(string &label) {
+Tipo* findVar(const string &label) {
 	list<Context>::iterator i = contextStack.begin();
 	while (i != contextStack.end() && !i->vars.count(label)) {
 		i++;
@@ -253,7 +315,8 @@ Tipo* findVar(string &label) {
 }
 
 bool declararGlobal (Tipo *tipo, const std::string &label) {
-	list<Context>::iterator bottom = contextStack.end()--;
+	list<Context>::iterator bottom = contextStack.end();
+	bottom--;
 	if (bottom->vars.count(label)) {
 		return false;
 	}

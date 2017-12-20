@@ -10,6 +10,8 @@
 #include "struct.h"
 #include "matrix.h"
 #include "list.h"
+#include "string.h"
+#include "function.h"
 #define YYSTYPE atributos
 #define OUTPUT_INTERMEDIARIO "-i"
 using namespace std;
@@ -22,22 +24,29 @@ fstream output;
 FILE *input;
 
 CustomType constructingType;
+Funcao constructingFunction;
+string constructingName;
+size_t returnCount;
+string argsStruct;
+bool inFunction = false;
 
 %}
 
-%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST
+%token TK_INT TK_FLOAT TK_BOOL TK_CHAR TK_LIST TK_STRING
 %token TK_IF TK_BLOCO_ABRIR TK_BLOCO_FECHAR TK_ELSE TK_FOR TK_STEPPING TK_FROM TK_TO TK_REPEAT TK_UNTIL TK_WHILE TK_BREAK TK_ALL TK_CONTINUE TK_PRINT TK_SWITCH TK_CASE TK_DEFAULT
-%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_VECTOR TK_TIPO_LIST TK_TIPO_STR
+%token TK_MAIN TK_ID TK_TIPO_INT TK_TIPO_FLOAT TK_TIPO_BOOL TK_TIPO_CHAR TK_TIPO_MATRIX TK_TIPO_VECTOR TK_TIPO_LIST TK_TIPO_STRING
 %token TK_COMENTARIO TK_COMENTARIO_MULT_LINHA
 %token TK_STRUCT TK_HAS TK_MEMBER_ACCESS
 %token TK_OPEN_MEMBER TK_CLOSE_MEMBER
-%token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE
-%token TK_DOTS
+%token TK_PUSH TK_POP TK_FRONT TK_BACK TK_IT_INBOUNDS TK_AFTER TK_BEFORE TK_IN
+%token TK_DOTS TK_NORETURN
+%token TK_RETURN
 %token TK_FIM TK_ERROR	TK_ENDL
 
 %start S
 
 %right TK_ATRIB
+%left TK_CONCAT
 %left TK_OR TK_AND TK_NOT
 %nonassoc TK_IGUAL TK_DIFERENTE
 %nonassoc TK_MAIOR TK_MENOR TK_MAIORI TK_MENORI
@@ -52,10 +61,9 @@ CustomType constructingType;
 S 			: COMANDOS
 			{
 				cout << "Regra S : COMANDOS" << endl;	//debug
-				declararLocal(&tipo_ptr, NULL_VAR);
 				string globalDeclar = contextStack.begin()->declar;
 				string globalGarbageCollect = contextStack.begin()->garbageCollect;
-				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std; \n\nint main(int argc, char **args)\n{\n" << "\t\n" << globalDeclar << newLine(string(NULL_VAR)+" = NULL\n") << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
+				output << "/*Compilador V3A*/\n" << "#include <iostream>\n#include<cstring>\n#include<stdlib.h>\n\nusing namespace std;\n\n" + tipo_ptr.trad+" "+string(NULL_VAR)+" = NULL;\n\n" + functionDeclars + "\n\nint main(int argc, char **args)\n{\n" << globalDeclar << $1.traducao << "\n" << globalGarbageCollect << "\n\treturn 0;\n}" << endl;
 
 			}
 			;		
@@ -99,11 +107,238 @@ COMANDOS	: COMANDO COMANDOS
 				cout << "Regra COMANDOS : vazio" << endl;	//debug
 			}	
 			;
-
-COMANDO 	: E
+			
+MEMBER_ACCESS	: TK_ID TK_MEMBER_ACCESS TK_ID
+				{
+					cout << "Regra MEMBER_ACCESS : " << $1.label << "'s " << $3.label << endl;	//debug
+					$1.tipo = findVar($1.label);
+					if ($1.tipo == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					//cout << $1.label << "= " << hex << $1.tipo->id << endl;	//debug
+					if (!belongsTo($1.tipo, GROUP_STRUCT) && !belongsTo($1.tipo, GROUP_PTR)) {
+						yyerror($1.label + " nao e um struct");
+					}
+					if (customTypes.count($1.tipo->id) == 0) {
+						//cout << "here" << endl;	//debug
+						yyerror($1.label + " nao e um struct");
+					}
+				
+					CustomType *type = &customTypes[$1.tipo->id];
+					//cout << hex << type->tipo.id << endl;	//debug
+					Tipo *tipo = getTipo(type, $3.label);
+					if (tipo == NULL) {
+						yyerror($1.label + " nao possui membro " + $3.label);
+					}
+					Tipo accessT;
+					std::string ptr, check;
+				
+					$$.label = generateVarLabel();
+					$$.tipo = tipo;
+					$$.traducao = $1.traducao;
+				
+					accessT = *tipo;
+					accessT.trad = TIPO_PTR_TRAD;
+					declararLocal(&accessT, $$.label);
+				
+					std::string ifLabel = generateLabel();
+					ptr = generateVarLabel();
+					check = generateVarLabel();
+					declararLocal(&tipo_ptr, ptr);
+					declararLocal(&tipo_bool, check);
+				
+					$$.traducao += newLine(check+" = "+$1.label+"!=NULL");
+					$$.traducao += newLine("if ("+check+") goto "+ifLabel);
+					$$.traducao += "\t" + newLine("std::cout << \"Erro: tentativa de acesso de membro de struct nulo\" << std::endl");
+					$$.traducao += "\t" + newLine("return 1");
+					$$.traducao += newLine(ifLabel+":");
+				
+					if (belongsTo($$.tipo, GROUP_STRUCT)) {
+						$$.traducao += retrieveFrom(type, $1.label, $3.label, $$.label);
+					} else {
+						$$.traducao += setAccess(type, $1.label, $3.label, $$.label);
+					}
+				
+					//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
+				
+					//cout << hex << tipo->id << endl;	//debug
+				}
+				| MEMBER_ACCESS TK_MEMBER_ACCESS TK_ID
+				{
+					cout << "Regra MEMBER_ACCESS : " << $1.label << "'s " << $3.label << endl;	//debug
+					$1.tipo = findVar($1.label);
+					if ($1.tipo == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					//cout << $1.label << "= " << hex << $1.tipo->id << endl;	//debug
+					if (!belongsTo($1.tipo, GROUP_STRUCT) && !belongsTo($1.tipo, GROUP_PTR)) {
+						yyerror($1.label + " nao e um struct");
+					}
+					if (customTypes.count($1.tipo->id) == 0) {
+						//cout << "here" << endl;	//debug
+						yyerror($1.label + " nao e um struct");
+					}
+				
+					CustomType *type = &customTypes[$1.tipo->id];
+					//cout << hex << type->tipo.id << endl;	//debug
+					Tipo *tipo = getTipo(type, $3.label);
+					if (tipo == NULL) {
+						yyerror($1.label + " nao possui membro " + $3.label);
+					}
+					Tipo accessT;
+					std::string ptr, check;
+				
+					$$.label = generateVarLabel();
+					$$.tipo = tipo;
+					$$.traducao = $1.traducao;
+				
+					accessT = *tipo;
+					accessT.trad = TIPO_PTR_TRAD;
+					declararLocal(&accessT, $$.label);
+				
+					std::string ifLabel = generateLabel();
+					ptr = generateVarLabel();
+					check = generateVarLabel();
+					declararLocal(&tipo_ptr, ptr);
+					declararLocal(&tipo_bool, check);
+				
+					$$.traducao += newLine(check+" = "+$1.label+"!=NULL");
+					$$.traducao += newLine("if ("+check+") goto "+ifLabel);
+					$$.traducao += "\t" + newLine("std::cout << \"Erro: tentativa de acesso de membro de struct nulo\" << std::endl");
+					$$.traducao += "\t" + newLine("return 1");
+					$$.traducao += newLine(ifLabel+":");
+				
+					if (belongsTo($$.tipo, GROUP_STRUCT)) {
+						$$.traducao += retrieveFrom(type, $1.label, $3.label, $$.label);
+					} else {
+						$$.traducao += setAccess(type, $1.label, $3.label, $$.label);
+					}
+				
+					//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
+				
+					//cout << hex << tipo->id << endl;	//debug
+				}
+				;
+				
+MATRIX_ACCESS	: TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+				{
+					cout << "Regra MATRIX_ACCESS : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+					$1.tipo = findVar($1.label);
+					if ($1.tipo == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+						//cout << "here" << endl;
+						yyerror($1.label + " nao e uma matriz");
+					}
+					if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int || !belongsTo($6.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $6.tipo) != &tipo_int) {
+						yyerror("Argumento de indice da matrix deve ser do tipo int");
+					}
+				
+					std::string tdr;
+					std::string c1, c2;
+					CustomType &type = customTypes[$1.tipo->id];
+					Tipo *tipo = getTipo(&type, DATA_MEMBER);
+				
+					$$.traducao = $3.traducao + $6.traducao;
+				
+					$$.tipo = &tipo_int;
+					$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
+					$$.traducao += implicitCast(&$$, &$6, &$$.label, &c2);
+				
+					if (tipo == NULL) {
+						yyerror($1.label + " nao e uma matriz");
+					}
+				
+					$$.label = generateVarLabel();
+					$$.tipo = tipo;
+					declararLocal(&tipo_ptr, $$.label);
+				
+					$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label, $$.label);
+				
+				}
+				| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+				{
+					cout << "Regra MATRIX_ACCESS : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
+					$1.tipo = findVar($1.label);
+					if ($1.tipo == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+						//cout << "here" << endl;
+						yyerror($1.label + " nao e uma matriz");
+					}
+					if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int) {
+						yyerror("Argumento de indice da matrix deve ser do tipo int");
+					}
+				
+					std::string tdr;
+					std::string c1, colum;
+					CustomType &type = customTypes[$1.tipo->id];
+					Tipo *tipo = getTipo(&type, DATA_MEMBER);
+				
+					$$.traducao = $3.traducao;
+				
+					$$.tipo = &tipo_int;
+					$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
+				
+					if (tipo == NULL) {
+						yyerror($1.label + " nao e uma matriz");
+					}
+				
+					$$.label = generateVarLabel();
+					$$.tipo = tipo;
+					declararLocal(&tipo_ptr, $$.label);
+				
+					colum = generateVarLabel();
+					declararLocal(&tipo_int, colum);
+				
+					$$.traducao += newLine(colum + " = 0");
+				
+					$$.traducao += setIndexAccess(&type, $1.label, $3.label, colum, $$.label);
+				}
+				;
+			
+LVALUE		: MEMBER_ACCESS
 			{
-				cout << "Regra COMANDO : " << $1.label << endl;	//debug
+				cout << "Regra LVALUE : MEMBER_ACCESS" << endl;	//debug
+				$$.label = $1.label;
 				$$.traducao = $1.traducao;
+			}
+			
+			| MATRIX_ACCESS
+			{
+				cout << "Regra LVALUE : MATRIX_ACCESS" << endl;	//debug
+				$$.label = $1.label;
+				$$.traducao = $1.traducao;
+			}
+			| TK_ID
+			{
+				cout << "Regra LVALUE : " << $1.label << endl;	//debug
+				$$.tipo = findVar($1.label);
+				$$.label = $1.label;
+				$$.traducao = "";
+			}
+			;
+
+COMANDO 	: LVALUE TK_ATRIB E
+			{
+				cout << "Regra COMANDO : LVALUE TK_ATRIB E" << endl;	//debug;
+				string retorno;
+				$$.traducao = "";
+				
+				//cout << hex << $3.tipo->id << endl;	//debug
+				retorno = traducaoOperadores($1, $2, $3, &$$);
+
+				if (retorno == INVALID_CAST) {
+					yyerror("Operacao invalida com tipos " + $1.tipo->trad + " e " + $3.tipo->trad);
+				} else if (retorno == VAR_ALREADY_DECLARED) {
+					yyerror("Variavel com nome " + $1.label + " ja declarada anteriormente");
+				} else if (retorno == VAR_UNDECLARED) {
+					yyerror("Variavel nao declarada");
+				}
+				
+				$$.traducao += retorno;
 			}
 
 			| DECLARACAO
@@ -115,6 +350,11 @@ COMANDO 	: E
 			| DECLARACAO_STRUCT
 			{
 				cout << "Regra COMANDO : DECLARACAO_STRUCT" << endl;	//debug
+				$$.traducao = $1.traducao;
+			}
+			| FUNCTION_CALL
+			{
+				cout << "Regra COMANDO : FUNCTION_CALL" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
 			
@@ -140,6 +380,14 @@ COMANDO 	: E
 				cout << "Regra COMANDO : PRINT" << endl;	//debug
 				$$.traducao = $1.traducao;
 			}
+			| FUNC_RETURN_CMD
+			{
+				cout << "Regra COMANDO : FUNC_RETURN_CMD" << endl;	//debug
+				if (!inFunction) {
+					yyerror("Nao e possivel executar retorno fora de funcao");
+				}
+			}
+			
 			| TK_COMENTARIO
 			{
 				cout << "Regra COMANDO : TK_COMENTARIO" << endl;	//debug
@@ -277,7 +525,307 @@ COMANDO 	: E
 				$$.traducao = $3.traducao + $5.traducao + implicitCast(&$$, &$3, &$$.label, &data);
 				$$.traducao += iterator_pushBefore(t, $1.label, iteratorT, $5.label, data);		
 			}
-			;			
+			
+			| '(' FUNC_RETURN FUNC_RETURNS FUNC_DECLARE_NAME '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS
+			{
+				cout << "Regra COMMAND : '(' FUNC_RETURN FUNC_RETURNS TK_ID '(' FUNC_ARGS TK_DOTS FUNC_COMMANDS" << endl;	//debug
+				Funcao *f = getFunction($4.label);
+				f->traducao = $8.traducao;
+				createFunc(f, $4.label);
+				desempContexto();
+				inFunction = false;
+			}
+			/*
+			| '(' FUNC_CALL_RETURN FUNC_CALL_RETURNS TK_ID '(' FUNC_ARGS
+			{
+			
+			}
+			*/
+			;
+			
+FUNC_DECLARE_NAME	: TK_ID
+					{
+						cout << "Regra FUNC_DECLARE_NAME : TK_ID" << endl;	//debug
+						constructingName = $1.label;
+					}
+					;
+			
+FUNC_RETURN		: TIPO TK_ID
+				{
+					cout << "Regra FUNC_RETURN : TIPO TK_ID" << endl;	//debug
+					constructingFunction = newFunc();
+					inFunction = true;
+					returnCount = 0;
+					addRetorno(&constructingFunction, $1.tipo, $2.label);
+					returnCount++;
+					empContexto();
+				}
+				| TK_NORETURN
+				{
+					cout << "Regra FUNC_RETURN : TK_NORETURN" << endl;	//debug
+					constructingFunction = newFunc();
+					inFunction = true;
+					returnCount = 0;
+					empContexto();
+				}
+				| TIPO
+				{
+					cout << "Regra FUNC_RETURN : TIPO" << endl;	//debug
+					constructingFunction = newFunc();
+					inFunction = true;
+					returnCount = 0;
+					addRetorno(&constructingFunction, $1.tipo, "return"+to_string(returnCount));
+					returnCount++;
+					empContexto();
+				}
+				;
+				
+FUNC_RETURN2	: TIPO TK_ID
+				{
+					cout << "Regra FUNC_RETURN2 : TIPO TK_ID" << endl;	//debug
+					addRetorno(&constructingFunction, $1.tipo, $2.label);
+					returnCount++;
+				}
+				| TIPO
+				{
+					cout << "Regra FUNC_RETURN2 : TIPO" << endl;	//debug
+					addRetorno(&constructingFunction, $1.tipo, "return"+to_string(returnCount));
+					returnCount++;			
+				}
+				;
+			
+FUNC_RETURNS	: ',' FUNC_RETURN2 FUNC_RETURNS
+				{
+					cout << "Regra FUNC_RETURNS : FUNC_RETURN2 FUNC_RETURNS" << endl;	//debug
+				}
+				| ')'
+				;
+			
+FUNC_ARG	: TIPO TK_ID
+			{
+				cout << "Regra FUNC_ARG : TIPO TK_ID" << endl;	//debug
+				addArg(&constructingFunction, $1.tipo, $2.label, "");
+				contextStack.begin()->vars[$2.label] = $1.tipo;
+			}
+			;
+			
+FUNC_ARGS2	: ',' FUNC_ARG FUNC_ARGS
+			{
+				cout << "Regra FUNC_ARGS2 : , FUNC_ARG FUNC_ARGS" << endl;	//debug
+			}
+			| ')'
+			{
+				declareFunc(&constructingFunction, constructingName);
+			}
+			;
+			
+FUNC_ARGS	: FUNC_ARG FUNC_ARGS2
+			{
+				cout << "Regra FUNC_ARGS : FUNC_ARG FUNC_ARGS2" << endl;	//debug
+			}
+			| ')'
+			{
+				declareFunc(&constructingFunction, constructingName);
+			}
+			;
+			
+FUNC_CMD_RETURN2	: E
+					{
+						cout << "Regra FUNC_CMD_RETURN2 : E" << endl;	//debug
+						if (returnCount >= constructingFunction.retornosLabel.size()) {
+							yyerror("Tentando retornar mais valores do que funcao retorna");
+						}
+						Tipo *t = getRetorno(&constructingFunction, returnCount);
+						string &rlabel = constructingFunction.retornosLabel[returnCount];
+						string attr;
+						
+						$$.tipo = t;
+						$$.label = generateVarLabel();
+						declararLocal(&tipo_ptr, $$.label);
+						
+						if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+							yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+						}
+						
+						//cout << hex << $1.tipo->id << endl;	//debug
+						//cout << hex << $$.tipo->id << endl;	//debug
+						
+						if ($1.tipo->id != nonPtr($$.tipo)->id) {
+							$$.traducao = implicitCast(&$$, &$1, &$$.label, &attr);
+							if ($$.traducao == INVALID_CAST) {
+								yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+							}
+							$$.traducao = $1.traducao + $$.traducao;
+						} else {
+							attr = $1.label;
+							$$.traducao = $1.traducao;
+						}
+						
+						//atribuir valor do retorno
+						$$.traducao += attrTo(&constructingFunction.retornos, RETURN_STRUCT, rlabel, attr);
+						returnCount++;
+					}
+					;
+			
+FUNC_CMD_RETURNS2	: ',' FUNC_CMD_RETURN2 FUNC_CMD_RETURNS2
+					{
+						cout << "Regra FUNC_CMD_RETURNS2 : ',' FUNC_CMD_RETURN2 FUNC_CMD_RETURNS2" << endl;	//debug
+						$$.traducao = $1.traducao + $2.traducao;
+					}
+					|
+					;
+					
+FUNC_CMD_RETURN1ST	: E
+					{
+						cout << "Regra FUNC_CMD_RETURN1ST : E" << endl;	//debug
+						returnCount = 0;
+						if (returnCount >= constructingFunction.retornosLabel.size()) {
+							yyerror("Tentando retornar mais valores do que funcao retorna");
+						}
+						Tipo *t = getRetorno(&constructingFunction, returnCount);
+						string &rlabel = constructingFunction.retornosLabel[returnCount];
+						string attr;
+						
+						$$.tipo = t;
+						$$.label = generateVarLabel();
+						declararLocal(&tipo_ptr, $$.label);
+						
+						if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+							yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+						}
+						
+						//cout << hex << $1.tipo->id << endl;	//debug
+						//cout << hex << $$.tipo->id << endl;	//debug
+						
+						if ($1.tipo->id != nonPtr($$.tipo)->id) {
+							$$.traducao = implicitCast(&$$, &$1, &$$.label, &attr);
+							if ($$.traducao == INVALID_CAST) {
+								yyerror("Retorno de " + $1.label + " incompativel com tipo de retorno esperado");
+							}
+							$$.traducao = $1.traducao + $$.traducao;
+						} else {
+							attr = $1.label;
+							$$.traducao = $1.traducao;
+						}
+						
+						//atribuir valor do retorno
+						$$.traducao += attrTo(&constructingFunction.retornos, RETURN_STRUCT, rlabel, attr);
+						returnCount++;
+					}
+					;
+			
+FUNC_CMD_RETURNS	: FUNC_CMD_RETURN1ST FUNC_CMD_RETURNS2
+					{
+						cout << "Regra FUNC_CMD_RETURNS : FUNC_CMD_RETURN1ST FUNC_CMD_RETURNS2" << endl;	//debug
+						$$.traducao = $1.traducao + $2.traducao;
+					}
+					;
+			
+FUNC_COMMANDS	: COMANDO FUNC_COMMANDS
+				{
+					cout << "Regra FUNC_COMMANDS : COMANDO FUNC_COMMANDS" << endl;	//debug
+					$$.traducao = $1.traducao + $2.traducao;
+				}
+				| TK_BLOCO_FECHAR
+				{
+					cout << "Regra FUNC_COMMANDS : TK_BLOCO_FECHAR" << endl;	//debug
+				}
+				;
+				
+FUNC_RETURN_CMD	: TK_RETURN	FUNC_CMD_RETURNS
+				{
+					cout << "Regra FUNC_RETURN_CMD : TK_RETURN FUNC_CMD_RETURNS FUNC_COMMANDS" << endl;	//debug
+					if (returnCount < constructingFunction.retornosLabel.size()) {
+						yyerror("Tentando retornar menos valores do que funcao retorna");
+					}
+					$$.traducao = $2.traducao;
+					$$.traducao += newLine(string("return ") + RETURN_STRUCT);
+				}
+				;
+				
+FUNC_CALL_ARGS2	: ',' FUNC_CALL_ARG FUNC_CALL_ARGS2
+				{
+					cout << "Regra FUNC_CALL_ARGS2 : ',' FUNC_CALL_ARG FUNC_CALL_ARGS2" << endl;	//debug
+					$$.traducao = $2.traducao + $3.traducao;
+				}
+				| ')'
+				;
+				
+FUNC_CALL_ARG	: E
+				{
+					cout << "Regra FUNC_CALL_ARG : E" << endl;	//debug
+					if (returnCount >= constructingFunction.argsLabel.size()) {
+						yyerror("Tendando passar mais argumentos do que funcao recebe");
+					}
+					Tipo *t = getArg(&constructingFunction, returnCount);
+					if (!belongsTo($1.tipo, getGroup(nonPtr(t)))) {
+						yyerror("Passando tipo incompativel "+$1.label+", esperava "+t->trad);
+					}
+					string arg;
+					$$.tipo = t;
+					$$.label = constructingFunction.argsLabel[returnCount];
+					
+					$$.traducao = $1.traducao+implicitCast(&$$, &$1, &$$.label, &arg);
+					$$.traducao += attrTo(&constructingFunction.args, argsStruct, $$.label, arg);
+					
+					returnCount++;
+				}
+				;
+				
+FUNC_CALL_ARGS	: FUNC_CALL_ARG FUNC_CALL_ARGS2
+				{
+					cout << "Regra FUNC_CALL_ARGS : FUNC_CALL_ARG FUNC_CALL_ARGS2" << endl;	//debug
+					$$.traducao = $1.traducao + $2.traducao;
+				}
+				| ')'
+				;
+				
+FUNCTION_NAME	: TK_ID
+				{
+					cout << "Regra FUNCTION_NAME : TK_ID" << endl;	//debug
+					Funcao *f = getFunction($1.label);
+					if (f == NULL) {
+						yyerror($1.label + " nao declarada anteriormente");
+					}
+					constructingFunction = *f;
+					argsStruct = generateVarLabel();
+					$$.traducao = newInstanceOf(&f->args, argsStruct, true, false);
+					returnCount = 0;
+				}
+				;
+				
+FUNCTION_CALL	: FUNCTION_NAME '(' FUNC_CALL_ARGS
+				{
+					cout << "Regra E : FUNCTION_NAME ( FUNC_CALL_ARGS" << endl;	//debug
+					$$.traducao = $1.traducao + $3.traducao;
+					if (constructingFunction.retornosLabel.size() > 1) {
+						$$.tipo = &constructingFunction.retornos.tipo;
+						//cout << hex << $$.tipo->id << dec << endl;	//debug
+						$$.label = generateVarLabel();
+				
+						declararLocal($$.tipo, $$.label);
+				
+						$$.traducao += newLine($$.label+" = "+$1.label+"("+argsStruct+")");
+					} else if (constructingFunction.retornosLabel.size() == 1) {
+						Tipo *t = &constructingFunction.retornos.tipo;
+						string ret = generateVarLabel();
+					
+						$$.label = generateVarLabel();
+						$$.tipo = nonPtr(getRetorno(&constructingFunction, 0));
+					
+						declararLocal($$.tipo, $$.label);
+						declararLocal(&tipo_ptr, ret);
+					
+						$$.traducao += newLine(ret+" = "+$1.label+"("+argsStruct+")");
+						$$.traducao += retrieveFrom(&constructingFunction.retornos, ret, constructingFunction.retornosLabel[0], $$.label);
+					
+					} else {
+						$$.tipo = NULL;
+						$$.label = "";
+						$$.traducao += newLine($1.label+"("+argsStruct+")");
+					}
+				}
+				;
 
 E 			: E TK_ATRIB E {
 
@@ -462,7 +1010,8 @@ E 			: E TK_ATRIB E {
 
 				$$.traducao = retorno;
 			}
-			| E TK_MENORI E {
+			| E TK_MENORI E
+			{
 
 				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
 				string retorno = traducaoOperadores($1, $2, $3, &$$);
@@ -476,6 +1025,26 @@ E 			: E TK_ATRIB E {
 				}
 
 				$$.traducao = retorno;
+			}
+			| E TK_CONCAT E
+			{
+				cout << "Regra E : " << $1.label << " " << $2.label << " " << $3.label << endl;	//debug
+				string c;
+				if (findVar($1.label) == NULL) {
+					yyerror("Variavel " + $1.label + " nao declarada");
+				} else if (findVar($3.label) == NULL) {
+					yyerror("Variavel " + $3.label + " nao declarada");
+				}
+				
+				$$.label = generateVarLabel();
+				$$.traducao = $1.traducao + $3.traducao + newString($$.label);
+				$$.tipo = &str_list->tipo;
+				
+				c = concat($1.tipo, $1.label, $3.tipo, $3.label, $$.label);
+				if (c == INVALID_CAST) {
+					yyerror("Nao foi possivel efetuar conversao para string");
+				}
+				$$.traducao += c;
 			}
 			| '(' TIPO ')' E
 			{	
@@ -501,143 +1070,31 @@ E 			: E TK_ATRIB E {
 				$$.label = generateVarLabel();
 				$$.traducao = $2.traducao + newLine($$.label + " = " + " - " + $2.label);
 			}
+			| FUNCTION_CALL
+			{
+				cout << "Regra E : FUNCTION_CALL" << endl;	//debug
+				$$.label = $1.label;
+				$$.tipo = $1.tipo;
+				//cout << hex << $$.tipo->id << endl;	//debug
+				$$.traducao = $1.traducao;
+			}
 			| INCREMENTOS
 			{
 				cout << "Regra E : INCREMENTOS" << endl;	//debug
 			}
 			
-			| E TK_MEMBER_ACCESS TK_ID
+			| MEMBER_ACCESS
 			{
-				cout << "Regra E : " << $1.label << "'s " << $3.label << endl;	//debug
-				$1.tipo = findVar($1.label);
-				if ($1.tipo == NULL) {
-					yyerror($1.label + " nao declarada anteriormente");
-				}
-				//cout << $1.label << "= " << hex << $1.tipo->id << endl;	//debug
-				if (!belongsTo($1.tipo, GROUP_STRUCT) && !belongsTo($1.tipo, GROUP_PTR)) {
-					yyerror($1.label + " nao e um struct");
-				}
-				if (customTypes.count($1.tipo->id) == 0) {
-					//cout << "here" << endl;	//debug
-					yyerror($1.label + " nao e um struct");
-				}
-				
-				CustomType *type = &customTypes[$1.tipo->id];
-				Tipo *tipo = getTipo(type, $3.label);
-				if (tipo == NULL) {
-					yyerror($1.label + " nao possui membro " + $3.label);
-				}
-				Tipo accessT;
-				std::string ptr, check;
-				
-				$$.label = generateVarLabel();
-				$$.tipo = tipo;
+				cout << "Regra E : MEMBER_ACCESS" << endl;	//debug
+				$$.label = $1.label;
 				$$.traducao = $1.traducao;
-				
-				accessT = *tipo;
-				accessT.trad = TIPO_PTR_TRAD;
-				declararLocal(&accessT, $$.label);
-				
-				std::string ifLabel = generateLabel();
-				ptr = generateVarLabel();
-				check = generateVarLabel();
-				declararLocal(&tipo_ptr, ptr);
-				declararLocal(&tipo_bool, check);
-				
-				$$.traducao += newLine(check+" = "+$1.label+"!=NULL");
-				$$.traducao += newLine("if ("+check+") goto "+ifLabel);
-				$$.traducao += "\t" + newLine("std::cout << \"Erro: tentativa de acesso de membro de struct nulo\" << std::endl");
-				$$.traducao += "\t" + newLine("return 1");
-				$$.traducao += newLine(ifLabel+":");
-				
-				if (belongsTo($$.tipo, GROUP_STRUCT)) {
-					$$.traducao += retrieveFrom(type, $1.label, $3.label, $$.label);
-				} else {
-					$$.traducao += setAccess(type, $1.label, $3.label, $$.label);
-				}
-				
-				//if (belongsTo(tipo, GROUP_PTR)) cout << "is pointer" << endl;	//debug
-				
-				//cout << hex << tipo->id << endl;	//debug
-				
 			}
 			
-			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER
+			| MATRIX_ACCESS 
 			{
-				cout << "Regra E : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
-				$1.tipo = findVar($1.label);
-				if ($1.tipo == NULL) {
-					yyerror($1.label + " nao declarada anteriormente");
-				}
-				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
-					cout << "here" << endl;
-					yyerror($1.label + " nao e uma matriz");
-				}
-				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int || !belongsTo($6.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $6.tipo) != &tipo_int) {
-					yyerror("Argumento de indice da matrix deve ser do tipo int");
-				}
-				
-				std::string tdr;
-				std::string c1, c2;
-				CustomType &type = customTypes[$1.tipo->id];
-				Tipo *tipo = getTipo(&type, DATA_MEMBER);
-				
-				$$.traducao = $3.traducao + $6.traducao;
-				
-				$$.tipo = &tipo_int;
-				$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
-				$$.traducao += implicitCast(&$$, &$6, &$$.label, &c2);
-				
-				if (tipo == NULL) {
-					yyerror($1.label + " nao e uma matriz");
-				}
-				
-				$$.label = generateVarLabel();
-				$$.tipo = tipo;
-				declararLocal(&tipo_ptr, $$.label);
-				
-				$$.traducao += setIndexAccess(&type, $1.label, $3.label, $6.label, $$.label);
-				
-			}
-			| TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER
-			{
-				cout << "Regra E : TK_ID TK_OPEN_MEMBER E TK_CLOSE_MEMBER TK_OPEN_MEMBER E TK_CLOSE_MEMBER" << endl;	//debug
-				$1.tipo = findVar($1.label);
-				if ($1.tipo == NULL) {
-					yyerror($1.label + " nao declarada anteriormente");
-				}
-				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
-					cout << "here" << endl;
-					yyerror($1.label + " nao e uma matriz");
-				}
-				if (!belongsTo($3.tipo, GROUP_NUMBER) || resolverTipo(&tipo_int, $3.tipo) != &tipo_int) {
-					yyerror("Argumento de indice da matrix deve ser do tipo int");
-				}
-				
-				std::string tdr;
-				std::string c1, colum;
-				CustomType &type = customTypes[$1.tipo->id];
-				Tipo *tipo = getTipo(&type, DATA_MEMBER);
-				
-				$$.traducao = $3.traducao;
-				
-				$$.tipo = &tipo_int;
-				$$.traducao += implicitCast(&$$, &$3, &$$.label, &c1);
-				
-				if (tipo == NULL) {
-					yyerror($1.label + " nao e uma matriz");
-				}
-				
-				$$.label = generateVarLabel();
-				$$.tipo = tipo;
-				declararLocal(&tipo_ptr, $$.label);
-				
-				colum = generateVarLabel();
-				declararLocal(&tipo_int, colum);
-				
-				$$.traducao += newLine(colum + " = 0");
-				
-				$$.traducao += setIndexAccess(&type, $1.label, $3.label, colum, $$.label);
+				cout << "Regra E : MATRIX_ACCESS" << endl;	//debug
+				$$.label = $1.label;
+				$$.traducao = $1.traducao;
 			}
 			| TK_ID TK_POP TK_BACK
 			{
@@ -788,6 +1245,16 @@ E 			: E TK_ATRIB E {
 				$$.label = $1.label;
 				$$.traducao = "";
 			}
+			| TK_STRING
+			{
+				cout << "Regra E : TK_STRING" << endl;	//debug
+				
+				$$.label = generateVarLabel();
+				$$.traducao = newString($$.label);
+				
+				$$.tipo = &str_list->tipo;
+				$$.traducao += attrLiteral(str_list, $$.label, $1.label);
+			}
 			;
 			
 DECLARACAO 	: TIPO TK_ID
@@ -795,9 +1262,17 @@ DECLARACAO 	: TIPO TK_ID
 				//cout << "tipo " << $1.tipo->trad << " declarado" << endl;
 				cout << "Regra DECLARACAO : TIPO TK_ID" << endl;	//debug
 				$$.tipo = $1.tipo;
-				if(!declararLocal($1.tipo, $2.label)) {
-					yyerror("Variavel ja declarada localmente");
-				}	
+				if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+					if(!declararLocal($1.tipo, $2.label)) {
+						yyerror("Variavel ja declarada localmente");
+					}
+				} else {
+					CustomType &c = customTypes[customTypesIds[$1.label]];
+					$$.traducao = newInstanceOf(&c, $2.label, true, false);
+					if ($$.traducao == VAR_ALREADY_DECLARED) {
+						yyerror($2.label +" ja declarada anteriormente");
+					}
+				}
 
 			}
 
@@ -835,7 +1310,7 @@ DECLARACAO 	: TIPO TK_ID
 				$$.traducao += implicitCast(&$$, &$5, &$$.label, &c1);
 				$$.traducao += implicitCast(&$$, &$8, &$$.label, &c2);
 				
-				tdr = newMatrix($1.tipo, $3.label, c1, c2);
+				tdr = newMatrix($1.tipo, $3.label, true, false, c1, c2);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}
@@ -863,7 +1338,7 @@ DECLARACAO 	: TIPO TK_ID
 				
 				$$.traducao += newLine(colum + " = 1");
 				
-				tdr = newMatrix($1.tipo, $3.label, c1, colum);
+				tdr = newMatrix($1.tipo, $3.label, true, false, c1, colum);
 				if (tdr == VAR_ALREADY_DECLARED) {
 					yyerror($3.label + " ja declarada anteriormente");
 				}
@@ -878,18 +1353,10 @@ DECLARACAO 	: TIPO TK_ID
 				}
 				$$.traducao = newList($1.tipo, $3.label);
 			}
-			
-			| TK_ID TK_ID
+			| TK_TIPO_STRING TK_ID
 			{
-				cout << "Regra DECLARACAO : TK_ID TK_ID" <<endl;	//debug
-				if (customTypesIds.count($1.label) == 0) {
-					yyerror($1.label + " nao nomeia um tipo");
-				}
-				CustomType &c = customTypes[customTypesIds[$1.label]];
-				$$.traducao = newInstanceOf(&c, $2.label, true);
-				if ($$.traducao == VAR_ALREADY_DECLARED) {
-					yyerror($2.label +" ja declarada anteriormente");
-				}
+				cout << "Regra DECLARACAO : TK_TIPO_STRING TK_ID" << endl;	//debug
+				$$.traducao = newString($2.label);
 			}
 			;
 			
@@ -1120,7 +1587,16 @@ DECLARACAO_NUMERO	: TK_ID
 							yyerror($1.label + " era esperado armazenar numero");
 						}
 					}
-					;	
+					;
+					
+DECLARACAO_ITERADOR	: TIPO TK_ID
+					{
+						cout << "Regra DECLARACAO_ITERADOR : TK_ID" << endl;
+						$$.tipo = newPtr($1.tipo);
+						$$.label = $2.label;
+						declararLocal($$.tipo, $$.label);
+					}
+					;
 			
 FOR	: TK_FOR
 	{
@@ -1299,7 +1775,61 @@ LOOP 		: FOR DECLARACAO_NUMERO TK_FROM E TK_TO E BLOCO
 				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
 				//cout << "loop translated" << endl;	//debug
 
-			} 
+			}
+			| FOR DECLARACAO_ITERADOR TK_IN TK_ID BLOCO
+			{
+				cout << "Regra LOOP : FOR TK_ID TK_IN TK_ID" << endl;	//debug
+				CustomType *list, *node;
+				Tipo *t = findVar($4.label);
+				Tipo *varT, *nodeT;
+				if (t == NULL) {
+					yyerror($4.label + " nao declarada anteriormente");
+				}
+				if (customTypes.count(t->id) == 0) {
+					yyerror($4.label + " nao e lista");
+				}
+				list = &customTypes[t->id];
+				varT = getTipo(list, TYPE_MEMBER);
+				if (varT == NULL) {
+					yyerror($4.label + " nao e lista");
+				}
+				nodeT = getTipo(list, FIRST_MEMBER);
+				varT = nonPtr(varT);
+				if (varT->id != nonPtr($2.tipo)->id) {
+					yyerror($2.label + " nao e o tipo correto para a lista " + $4.label);
+				}
+				node = &customTypes[nodeT->id];
+				
+				LoopLabel* loop = getLoop(0);
+				string iterator, check;
+				
+				iterator = generateVarLabel();
+				check = generateVarLabel();
+				declararLocal(&tipo_ptr, iterator);
+				declararLocal(&tipo_bool, check);
+				
+				//inicializar iterador
+				$$.traducao = retrieveFrom(list, $4.label, FIRST_MEMBER, iterator);
+				
+				//inicio do loop
+				$$.traducao += ident() + loop->inicio + ":\n";
+				//checar iterador
+				$$.traducao += iterator_end(iterator, check);
+				$$.traducao += newLine("if ("+check+") goto "+loop->fim);
+				//atribuir conteudo do iterador ao ponteiro
+				$$.traducao += setAccess(node, iterator, NODE_DATA_MEMBER, $2.label);
+				//bloco
+				$$.traducao += $5.traducao;
+				//incrementar iterador
+				$$.traducao += retrieveFrom(node, iterator, NEXT_MEMBER, iterator);
+				
+				$$.traducao += newLine("goto "+loop->inicio);
+				
+				$$.traducao = $1.traducao + contextStack.begin()->declar + "\n" + $$.traducao;
+				desempLoop();
+				desempContexto();
+				$$.traducao += ident() + "}\n" + newLine(loop->fim+":");
+			}
 
 			| WHILE E BLOCO 
 			{
@@ -1393,14 +1923,54 @@ PRINT_E		: E
 					yyerror("Variavel " + $1.label + " nao declarada");
 				}
 				$$.traducao = $1.traducao;
-				if (!belongsTo($1.tipo, GROUP_PTR)) {
+				if (!belongsTo($1.tipo, GROUP_PTR) && !belongsTo($1.tipo, GROUP_STRUCT)) {
+					//cout << "here" << endl;	//debug
 					$$.label = " << " + $1.label;
 				} else {
-					std::string var;
-					Tipo *t = nonPtr($1.tipo);
-					$$.tipo = t;
-					$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
-					$$.label = " << " + var;
+					if (!belongsTo($1.tipo, GROUP_STRUCT)) {
+						std::string var;
+						Tipo *t = nonPtr($1.tipo);
+						$$.tipo = t;
+						$$.traducao += implicitCast(&$$, &$1, &$$.label, &var);
+						$$.label = " << " + var;
+					} else {
+						std::string matrix, iterator, str;
+						std::string loopBegin, loopEnd, check;
+						$$.label = " << \"\"";
+						if (customTypes.count($1.tipo->id) == 0) {
+							yyerror ($1.label + " nao e um struct");
+						}
+						CustomType *t = &customTypes[$1.tipo->id];
+						if (getTipo(t, TYPE_MEMBER) == NULL) {
+							yyerror ($1.label + " nao e uma string");
+						}
+						CustomType *node = nodeType(getTipo(t, TYPE_MEMBER));
+
+						
+						matrix = generateVarLabel();
+						iterator = generateVarLabel();
+						str = generateVarLabel();
+						check = generateVarLabel();
+						
+						declararLocal(&tipo_ptr, matrix);
+						declararLocal(&tipo_ptr, iterator);
+						declararLocal(&tipo_ptr, str);
+						declararLocal(&tipo_bool, check);
+						
+						loopBegin = generateLabel();
+						loopEnd = generateLabel();
+						
+						$$.traducao += retrieveFrom(t, $1.label, FIRST_MEMBER, iterator);
+						$$.traducao += ident() + loopBegin + ":\n";
+						$$.traducao += iterator_end(iterator, check);
+						$$.traducao += newLine("if ("+check+") goto "+loopEnd);
+						$$.traducao += retrieveFrom(node, iterator, NODE_DATA_MEMBER, matrix);
+						$$.traducao += setAccess(str_matrix, matrix, DATA_MEMBER, str);
+						$$.traducao += newLine("std::cout << "+str);
+						$$.traducao += retrieveFrom(node, iterator, NEXT_MEMBER, iterator);
+						$$.traducao += newLine("goto "+loopBegin);
+						$$.traducao += newLine(loopEnd+":");
+					}
 				}
 			}
 			;
@@ -1416,7 +1986,7 @@ PRINT_ALT	: PRINT_E
 			| PRINT_E ',' PRINT_ALT
 			{
 				cout << "Regra PRINT_ALT : PRINT_E , PRINT_ALT" << endl;	//debug
-				$$.label = $1.label + " << \" \" << " + $3.label;
+				$$.label = $1.label + " << \" \" " + $3.label;
 				$$.traducao = $1.traducao + $3.traducao;
 			}
 			;
@@ -1440,6 +2010,20 @@ TIPO 		: TK_TIPO_INT
 			{
 				cout << "Regra TIPO : TK_TIPO_CHAR" << endl;	//debug
 				$$.tipo = &tipo_char;
+			}
+			| TK_ID
+			{
+				cout << "Regra TIPO : TK_ID" << endl;	//debug
+				if (customTypesIds.count($1.label) == 0) {
+					yyerror($1.label + " nao nomeia um tipo");
+				}
+				$$.tipo = &customTypes[customTypesIds[$1.label]].tipo;
+				//cout << hex << $$.tipo->id << endl;	//debug
+			}
+			| TK_TIPO_STRING
+			{
+				cout << "Regra TIPO : TK_TIPO_STRING" << endl;	//debug
+				$$.tipo = &str_list->tipo;
 			}
 			;
 
@@ -1482,7 +2066,7 @@ int main (int argc, char **args) {
 		cout << "Arquivo \"" << outputFileName << "\" nao pode ser aberto" << endl;
 		return 3;
 	}
-	
+	initializeString();
 	empContexto();
 	//cout << "parsing" << endl;	//debug
 	yyparse();

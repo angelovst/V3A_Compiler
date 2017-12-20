@@ -7,14 +7,21 @@
 	
 	
 	<styles>
-		<style id="type"	_name="Type"	map-to="def:type"/>
-		<style id="keyword" _name="Keyword" map-to="def:keyword"/>
-		<style id="function" _name="Operator/function" map-to="def:function"/>
-		<style id="comment"	_name="Comment" map-to="def:comment"/>
+		<style id="type"		_name="Type"				map-to="def:type"/>
+		<style id="keyword"		_name="Keyword"				map-to="def:keyword"/>
+		<style id="function"	_name="Operator/function"	map-to="def:function"/>
+		<style id="comment"		_name="Comment"				map-to="def:comment"/>
+		<style id="char"		_name="Character"			map-to="def:special-char"/>
+		<style id="esc-char"	_name="Escaped Character"	map-to="def:special-char"/>
+		<style id="string"		_name="String"				map-to="def:string"/>
+		<style id="boolean"		_name="Boolean"				map-to="def:special-char"/>
 	</styles>	
 	
 	<definitions>
 	
+		<context id="escaped-characters" style-ref="esc-char">
+			<match>\\.</match>
+		</context>
 		<!--main context-->
 		<context id="v3a">
 		
@@ -29,6 +36,7 @@
 					<keyword>string</keyword>
 					<keyword>matrix</keyword>
 					<keyword>vector</keyword>
+					<keyword>nothing</keyword>
 				</context>
 				
 				<context id="keywords" style-ref="keyword">
@@ -45,6 +53,8 @@
 					<keyword>until</keyword>
 					<keyword>type</keyword>
 					<keyword>has</keyword>
+					<keyword>in</keyword>
+					<keyword>return</keyword>
 				</context>
 				
 				<context id="functions" style-ref="function">
@@ -62,6 +72,11 @@
 					<keyword>inbounds</keyword>
 				</context>
 				
+				<context id="bool" style-ref="boolean">
+					<keyword>true</keyword>
+					<keyword>false</keyword>
+				</context>
+				
 				<context ref="def:decimal"/>
 				<context ref="def:float"/>
 				
@@ -73,6 +88,18 @@
 				<context id="multiline-comments" style-ref="comment">
 					<start>\/\*</start>
 					<end>\*\/</end>
+				</context>
+				
+				<context id="characters" style-ref="char">
+					<match>'(.|\\.)'</match>
+				</context>
+				
+				<context id="strings" end-at-line-end="true" style-ref="string">
+					<start>"</start>
+					<end>"</end>
+					<include>
+						<context ref="escaped-characters"/>
+					</include>
 				</context>
 				
 			</include>
