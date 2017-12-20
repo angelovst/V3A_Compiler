@@ -1,0 +1,24 @@
+float matrix m[4][4]
+float vector v[4]
+
+for i from 0 to m's rows do:
+	for j from 0 to m's colums do:
+		m[i][j] <- i * m's colums + j
+	end
+end
+
+for i from 0 to m's rows do:
+	for j from 0 to m's colums do:
+		print m[i][j]
+	end
+end
+
+for i from 0 to v's rows do:
+	v[i] <- m[i][0]*2
+end
+
+print '\n'
+
+for i from 0 to v's rows do:
+	print v[i]
+end

@@ -1,0 +1,16 @@
+string a
+string b
+
+print "hello world\n"
+
+a <- "abc"
+b <- "def"
+
+print a
+print b
+
+print a.b
+
+a <- a.b."ghi"
+
+print a
